@@ -1,0 +1,2 @@
+setuptools==20.7.0
+numpy==1.14.3
