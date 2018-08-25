@@ -1,6 +1,6 @@
 ### Install
 
-pip3 install git+https://github.com/jackersson/pygst-utils.git
+    pip3 install git+https://github.com/jackersson/pygst-utils.git
 
 ### Tools
 #### [Make Gst.Buffer writable](http://lifestyletransfer.com/how-to-make-gstreamer-buffer-writable-in-python/)
