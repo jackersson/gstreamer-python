@@ -33,6 +33,12 @@ _libgst.gst_buffer_unmap.restype = None
 _libgst.gst_mini_object_is_writable.argtypes = [c_void_p]
 _libgst.gst_mini_object_is_writable.restype = c_int
 
+_libgst.gst_memory_map.argtypes = [c_void_p, _GST_MAP_INFO_POINTER, c_int]
+_libgst.gst_memory_map.restype = c_int
+
+_libgst.gst_memory_unmap.argtypes = [c_void_p, _GST_MAP_INFO_POINTER]
+_libgst.gst_memory_unmap.restype = None
+
 
 @contextmanager
 def map_gst_buffer(pbuffer, flags):
@@ -43,10 +49,10 @@ def map_gst_buffer(pbuffer, flags):
             with map_gst_buffer(pbuffer, Gst.MapFlags.READ | Gst.MapFlags.WRITE) as mapped:
                 // do_something with mapped
 
-        :param pbuffer: 
+        :param pbuffer:
         :type pbuffer: Gst.Buffer
 
-        :param flags: 
+        :param flags:
         :type flags: Gst.MapFlags
 
         :rtype: bool (success flag)
@@ -69,13 +75,34 @@ def map_gst_buffer(pbuffer, flags):
             mapping.data, POINTER(c_byte * mapping.size)).contents
     finally:
         _libgst.gst_buffer_unmap(ptr, mapping)
-        
+
+
+@contextmanager
+def map_gst_memory(memory, flags):
+    if memory is None:
+        raise TypeError("Cannot pass NULL to _map_gst_buffer")
+
+    ptr = hash(memory)
+    if flags & Gst.MapFlags.WRITE and _libgst.gst_mini_object_is_writable(ptr) == 0:
+        raise ValueError("Writable array requested but buffer is not writeable")
+
+    mapping = _GstMapInfo()
+    success = _libgst.gst_memory_map(ptr, mapping, flags)
+    if not success:
+        raise RuntimeError("Couldn't map buffer")
+    try:
+        yield cast(
+            mapping.data, POINTER(c_byte * mapping.size)).contents
+    finally:
+        _libgst.gst_memory_unmap(ptr, mapping)
+
+
 
 def get_buffer_size(caps):
     """
         Get Gst.Buffer's (width, height) from Gst.Caps
 
-        :param caps: 
+        :param caps:
         :type caps: Gst.Caps
 
         :rtype: bool (success flag)
@@ -88,5 +115,5 @@ def get_buffer_size(caps):
         return False, (0, 0)
     (success, height) = caps_struct .get_int('height')
     if not success:
-        return False, (0, 0)    
+        return False, (0, 0)
     return True, (width, height)
