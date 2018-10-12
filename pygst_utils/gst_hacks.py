@@ -7,7 +7,7 @@ from contextlib import contextmanager
 
 import gi
 gi.require_version('Gst', '1.0')
-from gi.repository import Gst, GObject
+from gi.repository import Gst
 
 _GST_PADDING = 4  # From gstconfig.h
 
@@ -20,6 +20,7 @@ class _GstMapInfo(Structure):
                 ("maxsize", c_size_t),  # gsize maxsize
                 ("user_data", c_void_p * 4),     # gpointer user_data[4]
                 ("_gst_reserved", c_void_p * _GST_PADDING)]
+
 
 _GST_MAP_INFO_POINTER = POINTER(_GstMapInfo)
 
@@ -54,9 +55,6 @@ def map_gst_buffer(pbuffer, flags):
 
         :param flags:
         :type flags: Gst.MapFlags
-
-        :rtype: bool (success flag)
-        :rtype: tuple (int, int) -> (width, height)
     """
 
     if pbuffer is None:
@@ -64,7 +62,8 @@ def map_gst_buffer(pbuffer, flags):
 
     ptr = hash(pbuffer)
     if flags & Gst.MapFlags.WRITE and _libgst.gst_mini_object_is_writable(ptr) == 0:
-        raise ValueError("Writable array requested but buffer is not writeable")
+        raise ValueError(
+            "Writable array requested but buffer is not writeable")
 
     mapping = _GstMapInfo()
     success = _libgst.gst_buffer_map(ptr, mapping, flags)
@@ -79,12 +78,27 @@ def map_gst_buffer(pbuffer, flags):
 
 @contextmanager
 def map_gst_memory(memory, flags):
+    """
+        Map Gst.Memory with READ/WRITE flags
+
+        Example:
+            with map_gst_memory(memory, Gst.MapFlags.READ | Gst.MapFlags.WRITE) as mapped:
+                // do_something with mapped
+
+        :param pbuffer:
+        :type pbuffer: Gst.Memory
+
+        :param flags:
+        :type flags: Gst.MapFlags
+    """
+
     if memory is None:
         raise TypeError("Cannot pass NULL to _map_gst_buffer")
 
     ptr = hash(memory)
     if flags & Gst.MapFlags.WRITE and _libgst.gst_mini_object_is_writable(ptr) == 0:
-        raise ValueError("Writable array requested but buffer is not writeable")
+        raise ValueError(
+            "Writable array requested but buffer is not writeable")
 
     mapping = _GstMapInfo()
     success = _libgst.gst_memory_map(ptr, mapping, flags)
@@ -95,7 +109,6 @@ def map_gst_memory(memory, flags):
             mapping.data, POINTER(c_byte * mapping.size)).contents
     finally:
         _libgst.gst_memory_unmap(ptr, mapping)
-
 
 
 def get_buffer_size(caps):
