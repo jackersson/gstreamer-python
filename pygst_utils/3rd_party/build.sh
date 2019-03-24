@@ -1,6 +1,6 @@
 ROOT=$PWD
 
-echo "$PWD"
+echo "PWD: $PWD"
 
 # Gstreamer
 cd gstreamer

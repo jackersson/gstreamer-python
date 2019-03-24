@@ -25,6 +25,8 @@ class BuildCommand(build_py):
     def run(self):
         import subprocess
 
+        print("in run")
+
         cwd = os.path.dirname(os.path.abspath(__file__))
         build_file = os.path.join(cwd, 'build.sh')
         assert os.path.isfile(build_file), build_file
