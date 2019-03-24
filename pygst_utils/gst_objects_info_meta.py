@@ -55,9 +55,14 @@ def to_list(gst_object_info: GstObjectInfoArray) -> List[dict]:
     objects = []
     for i in range(gst_object_info.size):
         obj = gst_object_info.items[i]
+        class_name = ""
+        try:
+            class_name = obj.class_name.decode("utf-8")
+        except:
+            pass
         objects.append({"bounding_box": [obj.x, obj.y, obj.width, obj.height],
                         "confidence": obj.confidence,
-                        "class_name": obj.class_name.decode("utf-8") if obj.class_name else ""})
+                        "class_name": class_name})
     return objects
 
 
