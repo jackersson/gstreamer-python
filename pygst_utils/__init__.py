@@ -6,4 +6,4 @@ from gi.repository import Gst, GstBase, GObject, GLib
 from .gst_hacks import map_gst_buffer, get_buffer_size
 from .gst_hacks import map_gst_memory
 
-from .utils import gst_buffer_to_ndarray, gst_buffer_with_pad_to_ndarray
+from .utils import gst_buffer_to_ndarray, gst_buffer_with_pad_to_ndarray, numpy_to_gst_buffer
