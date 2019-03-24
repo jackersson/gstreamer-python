@@ -1,0 +1,4 @@
+include *.so
+include pygst_utils/3rd_party/gstreamer/build/*.so
+
+recursive-include *.so

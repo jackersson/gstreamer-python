@@ -29,6 +29,8 @@ class BuildCommand(build_py):
         build_file = os.path.join(cwd, 'build.sh')
         assert os.path.isfile(build_file), build_file
 
+        print("herererer")
+
         _ = subprocess.run(build_file, shell=True, executable="/bin/bash")
 
         build_py.run(self)
