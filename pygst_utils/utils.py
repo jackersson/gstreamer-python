@@ -51,7 +51,7 @@ def gst_buffer_with_pad_to_ndarray(buffer: Gst.Buffer, pad: Gst.Pad, channels: i
     if not success:
         raise ValueError('Invalid buffer size.')
 
-    return to_ndarray(buffer, width, height, channels)
+    return gst_buffer_to_ndarray(buffer, width, height, channels)
 
 
 def numpy_to_gst_buffer(array: np.ndarray) -> Gst.Buffer:
