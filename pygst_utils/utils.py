@@ -4,7 +4,7 @@ import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst
 
-from .gst_hacks import map_gst_buffer
+from .gst_hacks import map_gst_buffer, get_buffer_size
 
 
 def gst_buffer_to_ndarray(buffer: Gst.Buffer, width: int, height: int, channels: int = 3) -> np.ndarray:
