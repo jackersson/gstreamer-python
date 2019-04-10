@@ -18,8 +18,8 @@ class TestPyGstMeta(TestCase):
         assert len(gst_meta_get(buffer)) == 0
 
         objects = [
-            {'class_name': "person", 'bounding_box': [10, 10, 100, 100], 'confidence': 0.6},
-            {'class_name': "person", 'bounding_box': [10, 10, 100, 100], 'confidence': 0.6},
+            {'class_name': "person", 'bounding_box': [10, 10, 100, 100], 'confidence': 0.6, 'track_id': 1},
+            {'class_name': "person", 'bounding_box': [10, 10, 100, 100], 'confidence': 0.6, 'track_id': 2},
         ]
 
         gst_meta_write(buffer, objects)
@@ -29,6 +29,7 @@ class TestPyGstMeta(TestCase):
         for py_object, gst_object in zip(objects, result):
             assert py_object['bounding_box'] == gst_object['bounding_box']
             assert py_object['class_name'] == gst_object['class_name']
+            assert py_object['track_id'] == gst_object['track_id']
             self.assertAlmostEqual(py_object['confidence'], gst_object['confidence'])
 
         gst_meta_remove(buffer)

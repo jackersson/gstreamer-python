@@ -13,7 +13,8 @@ class GstObjectInfo(Structure):
                 ("width", c_int),
                 ("height", c_int),
                 ("confidence", c_float),
-                ("class_name", c_char_p)]
+                ("class_name", c_char_p),
+                ("track_id", c_int)]
 
 
 class GstObjectInfoArray(Structure):
@@ -45,7 +46,8 @@ def to_gst_objects_info(objects: List[dict]) -> GstObjectInfoArray:
         x, y, width, height = obj['bounding_box']
         gst_objects_info.items[i] = (x, y, width, height,
                                      obj["confidence"],
-                                     obj["class_name"].encode("utf-8"))
+                                     obj["class_name"].encode("utf-8"),
+                                     obj.get("track_id", 0))
 
     return gst_objects_info
 
@@ -62,7 +64,8 @@ def to_list(gst_object_info: GstObjectInfoArray) -> List[dict]:
             pass
         objects.append({"bounding_box": [obj.x, obj.y, obj.width, obj.height],
                         "confidence": obj.confidence,
-                        "class_name": class_name})
+                        "class_name": class_name,
+                        "track_id": obj.track_id})
     return objects
 
 
