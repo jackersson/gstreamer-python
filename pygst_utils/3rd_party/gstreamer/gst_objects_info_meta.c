@@ -96,9 +96,6 @@ GstObjectsInfoMeta * gst_buffer_add_objects_info_meta(GstBuffer *buffer, GstObje
         guint32 total_size = sizeof(GstObjectInfo)*size;
         gst_objects_info_meta->objects.items = malloc(total_size);
         memcpy ( gst_objects_info_meta->objects.items, objects->items, total_size );
-
-        // print_objects_info_meta(gst_annotations_meta)
-
     }
     return gst_objects_info_meta;
 }
@@ -120,23 +117,3 @@ gboolean gst_buffer_remove_objects_info_meta(GstBuffer *buffer)
     // https://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer/html/GstBuffer.html#gst-buffer-remove-meta
     return gst_buffer_remove_meta(buffer, &meta->meta);
 }
-
-/*
-void print_objects_info_meta(GstObjectsInfoMeta* meta)
-{
-    guint32 size = meta->objects.size;
-    printf ("Here size %i \n", size );
-
-    GstObjectsInfoArray* items = meta->objects.items;
-
-    int i  = 0;
-    for (i = 0; i < meta->objects.size; ++i )
-    {
-        GstObjectInfo* item = items + i;
-        printf ("Here %i, %i, %i, %i, %f, %i, %f \n", item->left      , item->top
-                                                    , item->right     , item->bottom
-                                                    , item->confidence, item->class_id
-                                                    , item->quality );
-    }
-}
-*/

@@ -34,9 +34,10 @@ struct _GstObjectInfo {
 
     // bounding box
     guint32 x, y, width, height;
-
     gfloat confidence;
     gchar* class_name;
+
+    guint32 track_id;
 };
 
 struct _GstObjectsInfoArray {
@@ -64,7 +65,10 @@ GST_EXPORT
 GstObjectsInfoMeta * gst_buffer_add_objects_info_meta(GstBuffer *buffer, GstObjectsInfoArray*);
 
 GST_EXPORT
-GstObjectsInfoArray* gst_buffer_get_objects_info_meta(GstBuffer* b);
+GstObjectsInfoArray* gst_buffer_get_objects_info_meta(GstBuffer* buffer);
+
+GST_EXPORT
+gboolean gst_buffer_remove_objects_info_meta(GstBuffer *buffer);
 
 G_END_DECLS
 
