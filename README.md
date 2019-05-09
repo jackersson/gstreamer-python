@@ -23,3 +23,20 @@
     array = gst_buffer_to_ndarray(Gst.Buffer, width, height, channels)
     # or
     array = gst_buffer_with_pad_to_ndarray(Gst.Buffer, Gst.Pad, channels)
+    
+    
+### Metadata
+
+#### [Object Info MedataData](https://github.com/jackersson/pygst-utils/blob/master/pygst_utils/gst_objects_info_meta.py)
+##### Structure
+       x
+       y
+       width
+       height
+       confidence
+       class_name
+       track_id
+##### Methods
+      gst_meta_write
+      gst_meta_get
+      gst_meta_remove
