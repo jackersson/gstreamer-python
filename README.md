@@ -36,7 +36,4 @@
        confidence
        class_name
        track_id
-##### Methods
-      gst_meta_write
-      gst_meta_get
-      gst_meta_remove
+
