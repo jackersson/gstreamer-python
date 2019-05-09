@@ -28,7 +28,7 @@
 ### Metadata
 
 #### [Object Info MedataData](https://github.com/jackersson/pygst-utils/blob/master/pygst_utils/gst_objects_info_meta.py)
-##### Structure
+
        x
        y
        width
