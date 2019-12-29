@@ -17,6 +17,26 @@ requirements = [
     'setuptools',
 ]
 
+
+class BuildCommand(build_py):
+    """
+        Build additional packages (./build.sh)
+    """
+    def run(self):
+        import subprocess
+
+        print("in run")
+
+        cwd = os.path.dirname(os.path.abspath(__file__))
+        build_file = os.path.join(cwd, 'build.sh')
+        assert os.path.isfile(build_file), build_file
+
+        print("herererer")
+
+        _ = subprocess.run(build_file, shell=True, executable="/bin/bash")
+
+        build_py.run(self)
+
 setup(
     name='pygst_utils',
     use_scm_version=True,
@@ -40,6 +60,8 @@ setup(
         'License :: OSI Approved :: Apache Software License',
         'Natural Language :: English',
         'Programming Language :: Python :: 3.6',
-    ]
+    ],
+    cmdclass={
+        'build_py': BuildCommand,
+    }
 )
-

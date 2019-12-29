@@ -2,8 +2,8 @@
     Took from https://github.com/stb-tester/stb-tester/blob/master/_stbt/gst_hacks.py
 '''
 from ctypes import *
+from typing import Tuple
 from contextlib import contextmanager
-
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -42,7 +42,7 @@ _libgst.gst_memory_unmap.restype = None
 
 
 @contextmanager
-def map_gst_buffer(pbuffer, flags):
+def map_gst_buffer(pbuffer: Gst.Buffer, flags: Gst.MapFlags) -> _GST_MAP_INFO_POINTER:
     """
         Map Gst.Buffer with READ/WRITE flags
 
@@ -77,7 +77,7 @@ def map_gst_buffer(pbuffer, flags):
 
 
 @contextmanager
-def map_gst_memory(memory, flags):
+def map_gst_memory(memory: Gst.Memory, flags: Gst.MapFlags) -> _GST_MAP_INFO_POINTER:
     """
         Map Gst.Memory with READ/WRITE flags
 
@@ -111,7 +111,7 @@ def map_gst_memory(memory, flags):
         _libgst.gst_memory_unmap(ptr, mapping)
 
 
-def get_buffer_size(caps):
+def get_buffer_size(caps: Gst.Caps) -> Tuple[bool, Tuple[int, int]]:
     """
         Get Gst.Buffer's (width, height) from Gst.Caps
 
