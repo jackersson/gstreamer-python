@@ -2,28 +2,15 @@ import numpy as np
 
 import gi
 gi.require_version('Gst', '1.0')
-from gi.repository import Gst
+from gi.repository import Gst  # noqa:F401,F402
 
-from .gst_hacks import map_gst_buffer, get_buffer_size
+from .gst_hacks import map_gst_buffer, get_buffer_size  # noqa:F401,F402
 
 
 def gst_buffer_to_ndarray(buffer: Gst.Buffer, width: int, height: int, channels: int = 3) -> np.ndarray:
-    """
-        Converts Gst.Buffer with known format (width, height, channels) to np.ndarray
+    """Converts Gst.Buffer with known format (width, height, channels) to np.ndarray
 
-        :param buffer:
-        :type buffer: Gst.Buffer
-
-        :param width:
-        :type width: int
-
-        :param height:
-        :type height: int
-
-        :param channels:
-        :type channels: int
-
-        :rtype: np.ndarray (height, width, channels)
+    :rtype: np.ndarray (height, width, channels)
     """
     with map_gst_buffer(buffer, Gst.MapFlags.READ) as mapped:
         # TODO: Check format
@@ -31,20 +18,9 @@ def gst_buffer_to_ndarray(buffer: Gst.Buffer, width: int, height: int, channels:
 
 
 def gst_buffer_with_pad_to_ndarray(buffer: Gst.Buffer, pad: Gst.Pad, channels: int = 3) -> np.ndarray:
-    """
+    """ Converts Gst.Buffer with Gst.Pad (stores buffer format) to np.ndarray
 
-        Converts Gst.Buffer with Gst.Pad (stores buffer format) to np.ndarray
-
-        :param buffer:
-        :type buffer: Gst.Buffer
-
-        :param pad: Gst.Pad allow access to buffer format (width, height)
-        :type pad: Gst.Pad
-
-        :param channels:
-        :type channels: int
-
-        :rtype: np.ndarray (height, width, channels)
+    :rtype: np.ndarray (height, width, channels)
     """
 
     success, (width, height) = get_buffer_size(pad.get_current_caps())
@@ -55,4 +31,5 @@ def gst_buffer_with_pad_to_ndarray(buffer: Gst.Buffer, pad: Gst.Pad, channels: i
 
 
 def numpy_to_gst_buffer(array: np.ndarray) -> Gst.Buffer:
+    """Converts numpy array to Gst.Buffer"""
     return Gst.Buffer.new_wrapped(array.tobytes())

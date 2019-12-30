@@ -5,44 +5,47 @@
     setup for pygst-utils package
 """
 import os
+from pathlib import Path
 
 from setuptools import setup
-from setuptools.command.build_py import build_py
+from setuptools.command.install import install as _install
 
 with open('README.md') as readme_file:
     readme = readme_file.read()
 
-requirements = [
-    'numpy',
-    'setuptools',
-]
+
+def read(file):
+    return Path(file).read_text('utf-8').strip()
 
 
-class BuildCommand(build_py):
-    """
-        Build additional packages (./build.sh)
-    """
+class install(_install):
+
     def run(self):
         import subprocess
 
-        print("in run")
+        def _run_bash_file(bash_file: str):
+            if os.path.isfile(bash_file):
+                print("Running ... ", bash_file)
+                _ = subprocess.run(bash_file, shell=True, executable="/bin/bash")
+            else:
+                print("Not found ", bash_file)
 
         cwd = os.path.dirname(os.path.abspath(__file__))
-        build_file = os.path.join(cwd, 'build.sh')
-        assert os.path.isfile(build_file), build_file
+        _run_bash_file(os.path.join(cwd, 'install_pygst.sh'))
+        _run_bash_file(os.path.join(cwd, 'build.sh'))
 
-        print("herererer")
+        _install.run(self)
 
-        _ = subprocess.run(build_file, shell=True, executable="/bin/bash")
 
-        build_py.run(self)
+install_requires = [
+    r for r in read('requirements.txt').split('\n') if r]
 
 setup(
     name='pygst_utils',
     use_scm_version=True,
     setup_requires=['setuptools_scm'],
     description="PyGst Utils package",
-    long_description=readme,
+    long_description='\n\n'.join((read('README.md'))),
     author="LifeStyleTransfer",
     author_email='taras.lishchenko@gmail.com',
     url='https://github.com/jackersson/pygst-utils',
@@ -50,7 +53,7 @@ setup(
         'pygst_utils',
     ],
     include_package_data=True,
-    install_requires=requirements,
+    install_requires=install_requires,
     license="Apache Software License 2.0",
     zip_safe=True,
     keywords='pygst_utils',
@@ -62,6 +65,6 @@ setup(
         'Programming Language :: Python :: 3.6',
     ],
     cmdclass={
-        'build_py': BuildCommand,
+        'install': install,
     }
 )

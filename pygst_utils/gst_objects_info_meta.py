@@ -4,7 +4,7 @@ from typing import List
 
 import gi
 gi.require_version('Gst', '1.0')
-from gi.repository import Gst
+from gi.repository import Gst  # noqa:F401,F402
 
 
 class GstObjectInfo(Structure):
@@ -20,6 +20,7 @@ class GstObjectInfo(Structure):
 class GstObjectInfoArray(Structure):
     _fields_ = [("items", POINTER(GstObjectInfo)),
                 ("size", c_int)]
+
 
 GstObjectInfoArrayPtr = POINTER(GstObjectInfoArray)
 
@@ -37,7 +38,7 @@ libc.gst_buffer_remove_objects_info_meta.restype = c_bool
 
 
 def to_gst_objects_info(objects: List[dict]) -> GstObjectInfoArray:
-    """ Converts List of objects to GstObjectInfoMeta """
+    """Converts List of objects to GstObjectInfoMeta """
     gst_objects_info = GstObjectInfoArray()
     gst_objects_info.size = len(objects)
     gst_objects_info.items = (GstObjectInfo * gst_objects_info.size)()
@@ -60,7 +61,7 @@ def to_list(gst_object_info: GstObjectInfoArray) -> List[dict]:
         class_name = ""
         try:
             class_name = obj.class_name.decode("utf-8")
-        except:
+        except Exception:
             pass
         objects.append({"bounding_box": [obj.x, obj.y, obj.width, obj.height],
                         "confidence": obj.confidence,

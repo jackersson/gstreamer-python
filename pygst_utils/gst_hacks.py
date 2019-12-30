@@ -1,13 +1,13 @@
-'''
-    Took from https://github.com/stb-tester/stb-tester/blob/master/_stbt/gst_hacks.py
-'''
+"""
+    Source: https://github.com/stb-tester/stb-tester/blob/master/_stbt/gst_hacks.py
+"""
 from ctypes import *
 from typing import Tuple
 from contextlib import contextmanager
 
 import gi
 gi.require_version('Gst', '1.0')
-from gi.repository import Gst
+from gi.repository import Gst  # noqa:F401,F402
 
 _GST_PADDING = 4  # From gstconfig.h
 
@@ -43,18 +43,11 @@ _libgst.gst_memory_unmap.restype = None
 
 @contextmanager
 def map_gst_buffer(pbuffer: Gst.Buffer, flags: Gst.MapFlags) -> _GST_MAP_INFO_POINTER:
-    """
-        Map Gst.Buffer with READ/WRITE flags
+    """ Map Gst.Buffer with READ/WRITE flags
 
         Example:
             with map_gst_buffer(pbuffer, Gst.MapFlags.READ | Gst.MapFlags.WRITE) as mapped:
                 // do_something with mapped
-
-        :param pbuffer:
-        :type pbuffer: Gst.Buffer
-
-        :param flags:
-        :type flags: Gst.MapFlags
     """
 
     if pbuffer is None:
@@ -78,18 +71,11 @@ def map_gst_buffer(pbuffer: Gst.Buffer, flags: Gst.MapFlags) -> _GST_MAP_INFO_PO
 
 @contextmanager
 def map_gst_memory(memory: Gst.Memory, flags: Gst.MapFlags) -> _GST_MAP_INFO_POINTER:
-    """
-        Map Gst.Memory with READ/WRITE flags
+    """Map Gst.Memory with READ/WRITE flags
 
         Example:
             with map_gst_memory(memory, Gst.MapFlags.READ | Gst.MapFlags.WRITE) as mapped:
                 // do_something with mapped
-
-        :param pbuffer:
-        :type pbuffer: Gst.Memory
-
-        :param flags:
-        :type flags: Gst.MapFlags
     """
 
     if memory is None:
@@ -112,14 +98,11 @@ def map_gst_memory(memory: Gst.Memory, flags: Gst.MapFlags) -> _GST_MAP_INFO_POI
 
 
 def get_buffer_size(caps: Gst.Caps) -> Tuple[bool, Tuple[int, int]]:
-    """
-        Get Gst.Buffer's (width, height) from Gst.Caps
+    """ Get Gst.Buffer's (width, height) from Gst.Caps
 
-        :param caps:
-        :type caps: Gst.Caps
-
-        :rtype: bool (success flag)
-        :rtype: tuple (int, int) -> (width, height)
+    :rtype: Tuple[bool, Tuple[int, int]]
+        bool            : (success flag)
+        Tuple (int, int): (width, height)
     """
 
     caps_struct = caps.get_structure(0)

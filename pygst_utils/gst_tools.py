@@ -29,8 +29,6 @@ from fractions import Fraction
 import attr
 import numpy as np
 
-from .. import base
-
 import gi
 gi.require_version('Gst', '1.0')
 gi.require_version('GstApp', '1.0')
@@ -38,6 +36,7 @@ gi.require_version('GstVideo', '1.0')
 from gi.repository import Gst, GLib, GObject, GstApp, GstVideo  # noqa:F401,F402
 
 Gst.init(None)
+
 
 class NamedEnum(Enum):
 
@@ -72,14 +71,6 @@ _CHANNELS = {
 
 _SUPPORTED_CHANNELS_NUM = set(_CHANNELS.values())
 _SUPPORTED_VIDEO_FORMATS = [GstVideo.VideoFormat.to_string(s) for s in _CHANNELS.keys()]
-
-
-def gst_video_format_to_str(fmt: GstVideo.VideoFormat) -> str:
-    return GstVideo.VideoFormat.to_string(fmt)
-
-
-def is_num_channels_supported(num_channels: int) -> bool:
-    return num_channels in _SUPPORTED_CHANNELS_NUM
 
 
 def get_num_channels(fmt: GstVideo.VideoFormat) -> int:
@@ -154,11 +145,15 @@ class GstPipeline:
         # https://github.com/beetbox/audioread/issues/63#issuecomment-390394735
         self._main_loop = GLib.MainLoop.new(None, False)
 
+        # Initialize Bus
         self._bus = self._pipeline.get_bus()
         self._bus.add_signal_watch()
         self._bus.enable_sync_message_emission()
-        self._bus.connect("message", self._bus_call, None)
+        self.bus.connect("message::error", self.on_error)
+        self.bus.connect("message::eos", self.on_eos)
+        self.bus.connect("message::warning", self.on_warning)
 
+        # Initalize Pipeline
         self._on_pipeline_init()
         self._pipeline.set_state(Gst.State.READY)
 
@@ -173,7 +168,7 @@ class GstPipeline:
 
         self._main_loop_thread.start()
 
-    def _on_pipeline_init(self):
+    def _on_pipeline_init(self) -> None:
         """Sets additional properties for plugins in Pipeline"""
         pass
 
@@ -266,45 +261,23 @@ class GstPipeline:
     def shutdown_requested(self) -> bool:
         return self._end_event.is_set()
 
-    def _bus_call(self, bus: Gst.Bus, message: Gst.Message, user_data: typ.Optional[typ.Any]) -> bool:
-        mtype = message.type
+    def on_error(self, bus: Gst.Bus, message: Gst.Message):
+        err, dbg = msg.parse_error()
+        self.log.error("Error %s: %s. %s", err, debug, self)
+        self._stop_pipeline()
 
-        if mtype == Gst.MessageType.EOS:
-            self.log.debug("%s received stream EOS event", self)
-            self._stop_pipeline()
-        elif mtype == Gst.MessageType.ERROR:
-            err, debug = message.parse_error()
-            self.log.error("Error %s: %s. %s", err, debug, self)
-            self._stop_pipeline()
-        elif mtype == Gst.MessageType.WARNING:
-            err, debug = message.parse_warning()
-            self.log.warning("%s: %s. %s", err, debug, self)
-        return True
+    def on_eos(self, bus: Gst.Bus, message: Gst.Message):
+        self.log.debug("%s received stream EOS event", self)
+        self._stop_pipeline()
 
-
-def gst_synced_plugin(plugin_string: str, sync: bool = False) -> str:
-    """Adds sync attribute to plugin name
-
-    Example:
-        fakesink sync=False
-    """
-    return plugin_string + ' sync={}'.format(sync)
+    def on_warning(self, bus: Gst.Bus, message: Gst.Message):
+        warn, debug = message.parse_warning()
+        self.log.warning("%s: %s. %s", warn, debug, self)
 
 
 def fraction_to_str(fraction: Fraction) -> str:
     """Converts fraction to str"""
     return '{}/{}'.format(fraction.numerator, fraction.denominator)
-
-
-def gst_appsrc_format(*, width: int, height: int, fps: Fraction = None,
-                      video_type: VideoType = VideoType.VIDEO_RAW,
-                      video_frmt: GstVideo.VideoFormat = GstVideo.VideoFormat.RGB) -> str:
-
-    video_frmt_ = GstVideo.VideoFormat.to_string(video_frmt)
-    gst_string = 'appsrc caps={},format={},width={},height={}'.format(video_type.value, video_frmt_, width, height)
-    if fps:
-        gst_string += ',fps={}'.format(fraction_to_str(fps))
-    return gst_string
 
 
 def gst_video_format_plugin(*, width: int = None, height: int = None, fps: Fraction = None,
@@ -342,138 +315,6 @@ def gst_video_format_plugin(*, width: int = None, height: int = None, fps: Fract
         return None
 
     return plugin
-
-
-def gst_video_format_bin(*, width: int = None, height: int = None, fps: Fraction = None,
-                         video_type: VideoType = VideoType.VIDEO_RAW,
-                         video_frmt: GstVideo.VideoFormat = GstVideo.VideoFormat.RGB) -> typ.Optional[typ.List[str]]:
-    """
-        Returns plugins string for
-            video scaling:
-                videoscale ! video/x-raw,width=width,height=height
-
-            video fps change:
-                videorate ! video/x-raw,framerate=1/fps
-
-            video format change:
-                video/x-raw,format=RGB
-
-            all possible video change:
-                videorate ! videoscale ! video/x-raw,format=RGB,width=widht,height=height,framerate=1/fps
-
-        :param width: image width
-        :param height: image height
-        :param fps: video fps
-
-        :param video_type: gst specific (raw, h264, ..)
-            https://gstreamer.freedesktop.org/documentation/design/mediatype-video-raw.html
-
-        :param video_frmt: gst specific (RGB, BGR, RGBA)
-            https://gstreamer.freedesktop.org/documentation/design/mediatype-video-raw.html
-            https://lazka.github.io/pgi-docs/index.html#GstVideo-1.0/enums.html#GstVideo.VideoFormat
-    """
-
-    plugin = gst_video_format_plugin(width=width, height=height, fps=fps, video_type=video_type, video_frmt=video_frmt)
-    if plugin is None:
-        return None
-
-    plugins = [plugin]
-
-    if "width" in plugin or "height" in plugin:
-        # method: 0 - nearest neighbours
-        # https://gstreamer.freedesktop.org/documentation/videoscale/index.html?gi-language=c#GstVideoScaleMethod
-        plugins = ["videoscale method=0"] + plugins
-
-    if "framerate" in plugin:
-        plugins = ["videorate"] + plugins
-
-    return plugins
-
-
-def gst_named_plugin(plugin_string: str, plugin_name: typ.Optional[str] = None) -> str:
-    """Returns plugin string with name """
-    return plugin_string + ' name={}'.format(plugin_name) if plugin_name else plugin_string
-
-
-def gst_source(source: str, plugin_name: typ.Optional[str] = None) -> str:
-    """Returns gst source plugin for gst-launch
-
-    :param source: file/device/stream
-    :param plugin_name: unique plugin identifier
-
-    Gstreamer Plugins*:
-        filesrc: /data/doc/gstreamer/head/gstreamer-plugins/html/gstreamer-plugins-filesrc.html
-        v4l2src: /documentation/video4linux2/v4l2src.html
-        rtspsrc: /data/doc/gstreamer/head/gst-plugins-good/html/gst-plugins-good-plugins-rtspsrc.html
-        TODO:
-        splitmuxsrc : /data/doc/gstreamer/head/gst-plugins-good/html/gst-plugins-good-plugins-splitmuxsrc.html
-        multifilesrc: /data/doc/gstreamer/head/gst-plugins-good/html/gst-plugins-good-plugins-multifilesrc.html
-        souphttpsrc : /documentation/soup/souphttpsrc.html
-
-        * Gst Host: https://gstreamer.freedesktop.org
-    """
-    plugin = ""
-    if source.startswith('rtsp://'):
-        plugin = 'rtspsrc location={}'.format(source)  # " latency=0 drop-on-latency=True"
-    elif any(source.startswith('{}://'.format(schema)) for schema in ['https', 'rtsp']):
-        raise NotImplementedError("HTTP stream not supported")
-    elif "%0" in source or '*' in source:
-        # images: multifilesrc (ex: source="img.%04d.png")
-        # videos: splitmuxsrc (ex: source="video*.mov")
-        # kind = filetype.guess(source)
-        # if 'video' in kind.mime -> splitmuxsrc
-        # if 'image' in kind.mime -> multifilesrc
-        raise NotImplementedError("Multisource stream not supported")
-    elif os.path.isfile(source):
-        # FIXME: filetype not working with some files
-        # mime_type = filetype.guess(source).mime
-        # if 'video' not in mime_type:
-        #     raise NotImplementedError('File type <{}> not supported'.format(mime_type))
-        plugin = 'filesrc location={}'.format(source)
-    elif any(source.startswith('{}'.format(schema)) for schema in ['/dev/video', '/device']):
-        plugin = 'v4l2src device={}'.format(source)
-    elif source == 'videotestsrc':
-        plugin = 'videotestsrc'
-    else:
-        raise NotImplementedError("Not supported stream")
-
-    return gst_named_plugin(plugin, plugin_name)
-
-
-def gst_plugin_set_properties(plugin: str, **properties) -> str:
-    # TODO: check if property exists and it's value
-    plugin_ = plugin
-    for k, v in properties.items():
-        plugin_ += " {prop}={val}".format(prop=k, val=v)
-    return plugin_
-
-
-def flatten_list(in_list: typ.List) -> typ.List:
-    """Flattens list"""
-    result = []
-    for item in in_list:
-        if isinstance(item, list):
-            result.extend(flatten_list(item))
-        else:
-            result.append(item)
-    return result
-
-
-def to_gst_string(plugins: typ.List[str]) -> str:
-    """ Generates string representation from list of plugins """
-
-    if not plugins:
-        return ""
-
-    plugins_ = flatten_list(plugins)
-
-    result = plugins_[0]
-    for i in range(1, len(plugins_)):
-        if '.' in plugins_[i][-1]:  # tee case
-            result = result + ' ' + plugins_[i]
-        else:
-            result = result + ' ! ' + plugins_[i]  # ! between plugins
-    return result
 
 
 class GstVideoSink(GstPipeline):
@@ -593,9 +434,10 @@ class GstVideoSink(GstPipeline):
 class LeakyQueue(queue.Queue):
     """Queue that contains only the last actual items and drops the oldest one."""
 
-    def __init__(self, maxsize: int = 100):
+    def __init__(self, maxsize: int = 100, on_drop: typ.Optional[typ.Callable[['LeakyQueue', "object"], None]] = None):
         super().__init__(maxsize=maxsize)
         self._dropped = 0
+        self._on_drop = on_drop or (lambda queue, item: None)
 
     def put(self, item, block=True, timeout=None):
         if self.full():
@@ -645,7 +487,7 @@ class GstVideoSource(GstPipeline):
         self._sink = None    # GstApp.AppSink
         self._counter = 0
 
-        queue_cls = LeakyQueue if leaky else queue.Queue
+        queue_cls = partial(LeakyQueue, on_drop=self._on_drop) if leaky else queue.Queue
         self._queue = queue_cls(maxsize=max_buffers_size)  # Queue of GstBuffer
 
     @property
@@ -661,7 +503,7 @@ class GstVideoSource(GstPipeline):
             except queue.Empty:
                 break
 
-    def _on_drop(self, queue: base.LeakyQueue, buffer: GstBuffer) -> None:
+    def _on_drop(self, queue: LeakyQueue, buffer: GstBuffer) -> None:
         self.log.warning(
             'Buffer #%d for %s is dropped (totally dropped %d buffers)',
             int(buffer.pts / buffer.duration), self, queue.dropped)
