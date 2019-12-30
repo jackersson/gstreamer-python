@@ -339,8 +339,8 @@ class GstVideoSink(GstPipeline):
         self._fps = Fraction(fps)
         self._width = width
         self._height = height
-        self._video_type = video_type
-        self._video_frmt = video_frmt
+        self._video_type = video_type  # VideoType
+        self._video_frmt = video_frmt  # GstVideo.VideoFormat
 
         self._pts = 0
         self._dts = GLib.MAXUINT64
@@ -361,6 +361,7 @@ class GstVideoSink(GstPipeline):
             raise ValueError("%s not found", GstApp.AppSrc)
 
         if self._src:
+            # this instructs appsrc that we will be dealing with timed buffer
             self._src.set_property("format", Gst.Format.TIME)
 
             # set src caps
@@ -376,7 +377,8 @@ class GstVideoSink(GstPipeline):
     def to_gst_buffer(buffer: typ.Union[Gst.Buffer, np.ndarray], *, pts: typ.Optional[int] = None,
                       dts: typ.Optional[int] = None,
                       offset: typ.Optional[int] = None, duration: typ.Optional[int] = None) -> Gst.Buffer:
-        """ Parameters explained:
+        """Convert buffer to Gst.Buffer. Updates required fields
+        Parameters explained:
             https://lazka.github.io/pgi-docs/Gst-1.0/classes/Buffer.html#gst-buffer
         """
         gst_buffer = buffer
@@ -394,7 +396,7 @@ class GstVideoSink(GstPipeline):
 
     def push(self, buffer: typ.Union[Gst.Buffer, np.ndarray], *,
              pts: typ.Optional[int] = None, dts: typ.Optional[int] = None,
-             offset: typ.Optional[int] = None):
+             offset: typ.Optional[int] = None) -> None:
 
         if self.shutdown_requested or not self.is_active:
             stop_requested = "Stop requested" if self.shutdown_requested else ""
@@ -414,6 +416,8 @@ class GstVideoSink(GstPipeline):
                                         offset=offset or offset_,
                                         duration=self._duration)
 
+        # Emit 'push-buffer' signal
+        # https://lazka.github.io/pgi-docs/GstApp-1.0/classes/AppSrc.html#GstApp.AppSrc.signals.push_buffer
         self._src.emit("push-buffer", gst_buffer)
 
     @property
@@ -426,6 +430,8 @@ class GstVideoSink(GstPipeline):
             return
 
         if isinstance(self._src, GstApp.AppSrc):
+            # Emit 'end-of-stream' signal
+            # https://lazka.github.io/pgi-docs/GstApp-1.0/classes/AppSrc.html#GstApp.AppSrc.signals.end_of_stream
             self._src.emit("end-of-stream")
 
         super().shutdown(timeout=timeout, eos=eos)
@@ -451,6 +457,8 @@ class LeakyQueue(queue.Queue):
         return self._dropped
 
 
+# Struct copies fields from Gst.Buffer
+# https://lazka.github.io/pgi-docs/Gst-1.0/classes/Buffer.html
 @attr.s(slots=True, frozen=True)
 class GstBuffer:
     data = attr.ib()                                   # type: np.ndarray
@@ -485,7 +493,7 @@ class GstVideoSource(GstPipeline):
         super(GstVideoSource, self).__init__(command)
 
         self._sink = None    # GstApp.AppSink
-        self._counter = 0
+        self._counter = 0    # counts number of received buffers
 
         queue_cls = partial(LeakyQueue, on_drop=self._on_drop) if leaky else queue.Queue
         self._queue = queue_cls(maxsize=max_buffers_size)  # Queue of GstBuffer
@@ -515,13 +523,19 @@ class GstVideoSource(GstPipeline):
         self._sink = appsinks[0] if len(appsinks) == 1 else None
         if not self._sink:
             # TODO: force pipeline to have appsink
-            raise ValueError("%s not found", GstApp.AppSink)
+            raise AttributeError("%s not found", GstApp.AppSink)
 
+        # Listen to 'new-sample' event
+        # https://lazka.github.io/pgi-docs/GstApp-1.0/classes/AppSink.html#GstApp.AppSink.signals.new_sample
         if self._sink:
             self._sink.connect("new-sample", self._on_buffer, None)
 
     def _extract_buffer(self, sample: Gst.Sample) -> typ.Optional[GstBuffer]:
-        """Converts Gst.Sample to GstBuffer"""
+        """Converts Gst.Sample to GstBuffer
+
+        Gst.Sample:
+            https://lazka.github.io/pgi-docs/Gst-1.0/classes/Sample.html
+        """
         buffer = sample.get_buffer()
         caps = sample.get_caps()
 
@@ -544,6 +558,7 @@ class GstVideoSource(GstPipeline):
         c = get_num_channels(video_format)
         dtype = get_np_dtype(np.uint8)
 
+        # Copy buffer into np.ndarray
         array = np.ndarray((h, w, c), dtype=dtype,
                            buffer=buffer.extract_dup(0, buffer.get_size()))
 
@@ -551,6 +566,10 @@ class GstVideoSource(GstPipeline):
                          duration=buffer.duration, offset=buffer.offset)
 
     def _on_buffer(self, sink: GstApp.AppSink, data: typ.Any) -> Gst.FlowReturn:
+        """Callback on 'new-sample' signal"""
+        # Emit 'pull-sample' signal
+        # https://lazka.github.io/pgi-docs/GstApp-1.0/classes/AppSink.html#GstApp.AppSink.signals.pull_sample
+
         sample = sink.emit("pull-sample")
         if isinstance(sample, Gst.Sample):
             self._queue.put(self._extract_buffer(sample))
@@ -562,7 +581,7 @@ class GstVideoSource(GstPipeline):
         return Gst.FlowReturn.ERROR
 
     def pop(self, timeout: float = 0.1) -> typ.Optional[GstBuffer]:
-
+        """ Pops GstBuffer """
         if self.shutdown_requested:
             self.log.warning("Warning %s: %s", self, "Can't pop buffer. Shutdown Requested ")
             return None
@@ -583,7 +602,8 @@ class GstVideoSource(GstPipeline):
         return buffer
 
     @property
-    def queue_size(self):
+    def queue_size(self) -> int:
+        """Returns queue size of GstBuffer"""
         return self._queue.qsize()
 
     def shutdown(self, timeout: int = 1, eos: bool = False):

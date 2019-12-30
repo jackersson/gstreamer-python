@@ -1,6 +1,27 @@
 ### Install
+#### Install OS packages
+- [How to install Gstreamer on Ubuntu](http://lifestyletransfer.com/how-to-install-gstreamer-on-ubuntu/)
+- [How to install Gstreamer Python Bindings](http://lifestyletransfer.com/how-to-install-gstreamer-python-bindings/)
 
-    pip3 install git+https://github.com/jackersson/pygst-utils.git
+#### in-place
+```bash
+python3 -m venv venv
+
+source venv/bin/activate
+pip install --upgrade wheel pip setuptools
+pip install --upgrade --requirement requirements.txt
+
+./build
+./install_pygst.sh
+```
+
+#### pip-package
+    pip install git+https://github.com/jackersson/pygst-utils.git
+
+### Test
+```bash
+PYTHONPATH=. pytest tests/ -s --verbose
+```
 
 ### Tools
 #### [Make Gst.Buffer writable](http://lifestyletransfer.com/how-to-make-gstreamer-buffer-writable-in-python/)
@@ -23,8 +44,8 @@
     array = gst_buffer_to_ndarray(Gst.Buffer, width, height, channels)
     # or
     array = gst_buffer_with_pad_to_ndarray(Gst.Buffer, Gst.Pad, channels)
-    
-    
+
+
 ### Metadata
 
 #### [Object Info MedataData](https://github.com/jackersson/pygst-utils/blob/master/pygst_utils/gst_objects_info_meta.py)
