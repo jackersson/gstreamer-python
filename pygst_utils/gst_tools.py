@@ -203,7 +203,6 @@ class GstPipeline:
 
         self._pipeline_end_event.set()
 
-        # print("EOS ", self.is_active)
         if eos or self.is_active:
 
             self.log.debug("%s Sending EOS event ...", self)
@@ -214,16 +213,6 @@ class GstPipeline:
             except Exception:
                 pass
             self.log.debug("%s EOS event sent successfully.", self)
-
-        self.log.debug("%s Stoping main loop ...", self)
-        self._main_loop.quit()
-        self.log.debug("%s Main loop stopped", self)
-
-        try:
-            if self._main_loop_thread.is_alive():
-                self._main_loop_thread.join(timeout=timeout)
-        except Exception as err:
-            self.log.error("Error %s: %s", self, err)
 
         try:
             def cleanup(pipeline: Gst.Pipeline) -> None:
@@ -236,6 +225,16 @@ class GstPipeline:
             thread.join(timeout=timeout)
         except Exception:
             self.log.debug("%s Reset pipeline state ....", self)
+
+        self.log.debug("%s Stoping main loop ...", self)
+        self._main_loop.quit()
+        self.log.debug("%s Main loop stopped", self)
+
+        try:
+            if self._main_loop_thread.is_alive():
+                self._main_loop_thread.join(timeout=timeout)
+        except Exception as err:
+            self.log.error("Error %s: %s", self, err)
 
     def shutdown(self, timeout: int = 1, eos: bool = False) -> None:
         """Shutdown pipeline

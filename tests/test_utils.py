@@ -84,6 +84,12 @@ def test_video_source():
             assert pipeline.total_buffers_count == num_buffers
 
 
+def test_gst_pipeline():
+    command = "videotestsrc num-buffers=100 ! fakesink sync=false"
+    with pygst.GstPipeline(command) as pipeline:
+        assert isinstance(pipeline, pygst.GstPipeline)
+
+
 @pytest.mark.skip
 def test_video_src_to_source():
 

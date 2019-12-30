@@ -45,6 +45,46 @@ PYTHONPATH=. pytest tests/ -s --verbose
     # or
     array = gst_buffer_with_pad_to_ndarray(Gst.Buffer, Gst.Pad, channels)
 
+### GstPipeline
+- With **GstPipeline** run any **gst-launch** pipeline in Python
+```bash
+from pygst_utils import GstPipeline
+
+command = "videotestsrc num-buffers=100 ! fakesink sync=false"
+with GstPipeline(command) as pipeline:
+    ...
+```
+
+
+#### GstVideoSource based on AppSink
+- With **GstVideoSource** run any **gst-launch** pipeline and receive buffers in Python
+```bash
+from pygst_utils import GstVideoSource
+
+width, height, num_buffers = 1920, 1080, 100
+caps_filter = 'capsfilter caps=video/x-raw,format=RGB,width={},height={}'.format(width, height)
+command = 'videotestsrc num-buffers={} ! {} ! appsink emit-signals=True sync=false'.format(
+num_buffers, caps_filter)
+with GstVideoSource(command) as pipeline:
+    buffers = []
+    while len(buffers) < num_buffers:
+        buffer = pipeline.pop()
+        if buffer:
+            buffers.append(buffer)
+    print('Got: {} buffers'.format(len(buffers)))
+```
+
+#### GstVideoSink based on AppSrc
+- With **GstVideoSink** push buffers in Python to any **gst-launch** pipeline
+```bash
+from pygst_utils import GstVideoSink
+
+width, height = 1920, 1080
+command = "appsrc emit-signals=True is-live=True ! videoconvert ! fakesink sync=false"
+with GstVideoSink(command, width=width, height=height) as pipeline:
+    for _ in range(10):
+        pipeline.push(buffer=np.random.randint(low=0, high=255, size=(height, width, 3), dtype=np.uint8))
+```
 
 ### Metadata
 
