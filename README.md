@@ -96,7 +96,7 @@ with GstVideoSink(command, width=width, height=height) as pipeline:
 
 ### Metadata
 
-#### [Object Info MedataData](https://github.com/jackersson/gstreamer-python/blob/master/pygst_utils/gst_objects_info_meta.py)
+#### [Object Info MedataData](https://github.com/jackersson/gstreamer-python/blob/master/gstreamer/gst_objects_info_meta.py)
 
        x
        y
