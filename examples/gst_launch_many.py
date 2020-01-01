@@ -5,18 +5,15 @@ from gstreamer import GstPipeline, GstContext
 
 
 if __name__ == '__main__':
-    ctx = GstContext()
-    ctx.startup()
+    with GstContext():
+        pipelines = [GstPipeline(
+            f"videotestsrc num-buffers={randint(50, 300)} ! gtksink") for _ in range(5)]
 
-    pipelines = [GstPipeline(f"videotestsrc num-buffers={randint(50, 300)} ! gtksink") for _ in range(5)]
+        for p in pipelines:
+            p.startup()
 
-    for p in pipelines:
-        p.startup()
+        while any(p.is_active for p in pipelines):
+            time.sleep(.5)
 
-    while any(p.is_active for p in pipelines):
-        time.sleep(.5)
-
-    for p in pipelines:
-        p.shutdown()
-
-    ctx.shutdown()
+        for p in pipelines:
+            p.shutdown()
