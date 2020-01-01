@@ -1,6 +1,7 @@
 """
     Source: https://github.com/stb-tester/stb-tester/blob/master/_stbt/gst_hacks.py
 """
+import os
 from ctypes import *
 from typing import Tuple
 from contextlib import contextmanager

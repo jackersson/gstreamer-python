@@ -99,14 +99,14 @@ def test_video_src_to_source():
         buffer = frame.buffer
         h, w = buffer.shape[:2]
 
-        sink_command = "appsrc emit-signals=True is-live=True ! videoconvert ! fakesink sync=false"
+        sink_cmd = "appsrc emit-signals=True is-live=True ! videoconvert ! fakesink sync=false"
 
         fmt = GstVideo.VideoFormat.to_string(frame.buffer_format)
         caps_filter = f'capsfilter caps=video/x-raw,format={fmt},width={w},height={h}'
-        source_command = f'videotestsrc num-buffers={num_buffers} ! {caps_filter} ! appsink emit-signals=True sync=false'
+        src_cmd = f'videotestsrc num-buffers={num_buffers} ! {caps_filter} ! appsink emit-signals=True sync=false'
 
-        with gst.GstVideoSink(sink_command, width=w, height=h, video_frmt=frame.buffer_format) as sink, \
-                gst.GstVideoSource(source_command) as src:
+        with gst.GstVideoSink(sink_cmd, width=w, height=h, video_frmt=frame.buffer_format) as sink, \
+                gst.GstVideoSource(src_cmd) as src:
             assert sink.total_buffers_count == 0
 
             # wait pipeline to initialize

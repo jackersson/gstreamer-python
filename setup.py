@@ -23,13 +23,14 @@ class install(_install):
         def _run_bash_file(bash_file: str):
             if os.path.isfile(bash_file):
                 print("Running ... ", bash_file)
-                _ = subprocess.run(bash_file, shell=True, executable="/bin/bash")
+                _ = subprocess.run(bash_file, shell=True,
+                                   executable="/bin/bash")
             else:
                 print("Not found ", bash_file)
 
         cwd = os.path.dirname(os.path.abspath(__file__))
-        _run_bash_file(os.path.join(cwd, 'install_pygst.sh'))
-        _run_bash_file(os.path.join(cwd, 'build.sh'))
+        _run_bash_file(os.path.join(cwd, 'build-gst-python.sh'))
+        _run_bash_file(os.path.join(cwd, 'build-3rd-party.sh'))
 
         _install.run(self)
 
