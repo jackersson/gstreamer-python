@@ -86,6 +86,14 @@ def get_np_dtype(fmt: GstVideo.VideoFormat) -> np.number:
     return _DTYPES.get(fmt, np.uint8)
 
 
+def gst_state_to_str(state: Gst.State) -> str:
+    """Converts Gst.State to str representation
+
+    Explained: https://lazka.github.io/pgi-docs/Gst-1.0/classes/Element.html#Gst.Element.state_get_name
+    """
+    return Gst.Element.state_get_name(state)
+
+
 class GstPipeline:
     """Base class to initialize any Gstreamer Pipeline from string"""
 
@@ -99,7 +107,7 @@ class GstPipeline:
         self._pipeline = None      # Gst.Pipeline
         self._bus = None           # Gst.Bus
 
-        self._log = logging.getLogger('pygst.gt.{}'.format(self.__class__.__name__))
+        self._log = logging.getLogger('pygst.{}'.format(self.__class__.__name__))
         self._log.info("%s \n gst-launch-1.0 %s", self, command)
 
         self._end_event = threading.Event()
@@ -134,10 +142,9 @@ class GstPipeline:
         return self._pipeline.get_by_name(name)
 
     def startup(self):
-        """ Starts pipeline. (Blocking operation) """
+        """ Starts pipeline """
         if self.is_active:
-            self.log.warning("%s is already started. ", self)
-            return
+            raise RuntimeError("Can't initiate %s. Already started")
 
         self._pipeline = Gst.parse_launch(self._command)
 
@@ -148,7 +155,6 @@ class GstPipeline:
         # Initialize Bus
         self._bus = self._pipeline.get_bus()
         self._bus.add_signal_watch()
-        self._bus.enable_sync_message_emission()
         self.bus.connect("message::error", self.on_error)
         self.bus.connect("message::eos", self.on_eos)
         self.bus.connect("message::warning", self.on_warning)
@@ -162,9 +168,9 @@ class GstPipeline:
         self._end_event.clear()
         self._pipeline_end_event.clear()
 
-        self.log.debug("%s Setting pipeline state to %s ... ", self, Gst.State.PLAYING)
+        self.log.debug("%s Setting pipeline state to %s ... ", self, gst_state_to_str(Gst.State.PLAYING))
         self._pipeline.set_state(Gst.State.PLAYING)
-        self.log.debug("%s Pipeline state set to %s ", self, Gst.State.PLAYING)
+        self.log.debug("%s Pipeline state set to %s ", self, gst_state_to_str(Gst.State.PLAYING))
 
         self._main_loop_thread.start()
 
@@ -198,13 +204,14 @@ class GstPipeline:
             - EOS event necessary for FILESINK finishes properly
             - Use when pipeline crushes
         """
-        if self._pipeline_end_event.is_set():
+        if self.is_done:
             return
+
+        self.log.debug("%s Stopping pipeline ...", self)
 
         self._pipeline_end_event.set()
 
-        if eos or self.is_active:
-
+        if eos or self.shutdown_requested:
             self.log.debug("%s Sending EOS event ...", self)
             try:
                 thread = threading.Thread(target=self._pipeline.send_event, args=(Gst.Event.new_eos(),))
@@ -212,29 +219,20 @@ class GstPipeline:
                 thread.join(timeout=timeout)
             except Exception:
                 pass
-            self.log.debug("%s EOS event sent successfully.", self)
 
-        try:
-            def cleanup(pipeline: Gst.Pipeline) -> None:
-                """Clean Gst.Pipline"""
-                pipeline.set_state(Gst.State.NULL)
-                del pipeline
+        self.log.debug("%s Reseting pipeline state ....", self)
+        self._pipeline.set_state(Gst.State.NULL)
+        del self._pipeline
 
-            thread = threading.Thread(target=cleanup, args=(self._pipeline,))
-            thread.start()
-            thread.join(timeout=timeout)
-        except Exception:
-            self.log.debug("%s Reset pipeline state ....", self)
-
-        self.log.debug("%s Stoping main loop ...", self)
+        self.log.debug("%s Quitting main loop ...", self)
         self._main_loop.quit()
-        self.log.debug("%s Main loop stopped", self)
 
+        self.log.debug("%s Joining main loop thread...", self)
         try:
             if self._main_loop_thread.is_alive():
                 self._main_loop_thread.join(timeout=timeout)
         except Exception as err:
-            self.log.error("Error %s: %s", self, err)
+            self.log.error("%s.main_loop_thread : %s", self, err)
 
     def shutdown(self, timeout: int = 1, eos: bool = False) -> None:
         """Shutdown pipeline
@@ -243,7 +241,7 @@ class GstPipeline:
         if self.shutdown_requested:
             return
 
-        self.log.info('%s Shutdown started', self)
+        self.log.info('%s Shutdown requested ...', self)
 
         self._end_event.set()
 
@@ -253,8 +251,11 @@ class GstPipeline:
 
     @property
     def is_active(self) -> bool:
-        return self._main_loop and self._main_loop.is_running() \
-            and not self._pipeline_end_event.is_set()
+        return self._main_loop and self._main_loop.is_running()
+
+    @property
+    def is_done(self) -> bool:
+        return self._pipeline_end_event.is_set()
 
     @property
     def shutdown_requested(self) -> bool:
@@ -262,16 +263,16 @@ class GstPipeline:
 
     def on_error(self, bus: Gst.Bus, message: Gst.Message):
         err, dbg = msg.parse_error()
-        self.log.error("Error %s: %s. %s", err, debug, self)
+        self.log.error("Gstreamer.%s: Error %s: %s. ", self, err, debug)
         self._stop_pipeline()
 
     def on_eos(self, bus: Gst.Bus, message: Gst.Message):
-        self.log.debug("%s received stream EOS event", self)
+        self.log.debug("Gstreamer.%s: Received stream EOS event", self)
         self._stop_pipeline()
 
     def on_warning(self, bus: Gst.Bus, message: Gst.Message):
         warn, debug = message.parse_warning()
-        self.log.warning("%s: %s. %s", warn, debug, self)
+        self.log.warning("Gstreamer.%s: %s. %s", self, warn, debug)
 
 
 def fraction_to_str(fraction: Fraction) -> str:

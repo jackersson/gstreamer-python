@@ -87,6 +87,7 @@ def test_video_source():
 def test_gst_pipeline():
     command = "videotestsrc num-buffers=100 ! fakesink sync=false"
     with gst.GstPipeline(command) as pipeline:
+        assert False
         assert isinstance(pipeline, gst.GstPipeline)
 
 
