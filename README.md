@@ -11,8 +11,8 @@ source venv/bin/activate
 pip install --upgrade wheel pip setuptools
 pip install --upgrade --requirement requirements.txt
 
-./build
-./install_pygst.sh
+./build-3rd-party.sh
+./build-gst-python.sh
 ```
 
 #### pip-package
@@ -24,6 +24,14 @@ PYTHONPATH=. pytest tests/ -s --verbose
 ```
 
 ### Tools
+
+#### Setup
+- By default Gstreamer tools use **libgstreamer-1.0.so.0**
+```bash
+export LIB_GSTREAMER_PATH=libgstreamer-1.0.so.0
+```
+Export **LIB_GSTREAMER_PATH** with custom path to **libgstreamer.so**
+
 #### [Make Gst.Buffer writable](http://lifestyletransfer.com/how-to-make-gstreamer-buffer-writable-in-python/)
     from gstreamer import map_gst_buffer
     with map_gst_buffer(pbuffer, Gst.MapFlags.READ | Gst.MapFlags.WRITE) as mapped:

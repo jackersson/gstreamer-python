@@ -24,7 +24,7 @@ class _GstMapInfo(Structure):
 
 _GST_MAP_INFO_POINTER = POINTER(_GstMapInfo)
 
-_libgst = CDLL("libgstreamer-1.0.so.0")
+_libgst = CDLL(os.getenv("LIB_GSTREAMER_PATH", "libgstreamer-1.0.so.0"))
 _libgst.gst_buffer_map.argtypes = [c_void_p, _GST_MAP_INFO_POINTER, c_int]
 _libgst.gst_buffer_map.restype = c_int
 
