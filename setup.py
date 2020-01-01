@@ -2,16 +2,13 @@
 # -*- coding: utf-8 -*-
 
 """
-    setup for pygst-utils package
+    setup for gstreamer-python package
 """
 import os
 from pathlib import Path
 
 from setuptools import setup
 from setuptools.command.install import install as _install
-
-with open('README.md') as readme_file:
-    readme = readme_file.read()
 
 
 def read(file):
@@ -41,22 +38,22 @@ install_requires = [
     r for r in read('requirements.txt').split('\n') if r]
 
 setup(
-    name='pygst_utils',
+    name='gstreamer-python',
     use_scm_version=True,
     setup_requires=['setuptools_scm'],
     description="PyGst Utils package",
     long_description='\n\n'.join((read('README.md'))),
     author="LifeStyleTransfer",
-    author_email='taras.lishchenko@gmail.com',
+    author_email='taras@lifestyletransfer.com',
     url='https://github.com/jackersson/pygst-utils',
     packages=[
-        'pygst_utils',
+        'gstreamer',
     ],
     include_package_data=True,
     install_requires=install_requires,
     license="Apache Software License 2.0",
     zip_safe=True,
-    keywords='pygst_utils',
+    keywords='gstreamer-python',
     classifiers=[
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',

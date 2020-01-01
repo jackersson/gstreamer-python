@@ -25,21 +25,21 @@ PYTHONPATH=. pytest tests/ -s --verbose
 
 ### Tools
 #### [Make Gst.Buffer writable](http://lifestyletransfer.com/how-to-make-gstreamer-buffer-writable-in-python/)
-    from pygst_utils import map_gst_buffer
+    from gstreamer import map_gst_buffer
     with map_gst_buffer(pbuffer, Gst.MapFlags.READ | Gst.MapFlags.WRITE) as mapped:
                 // do_something with mapped
 
 #### Make Gst.Memory writable
-    from pygst_utils import map_gst_memory
+    from gstreamer import map_gst_memory
     with map_gst_memory(memory, Gst.MapFlags.READ | Gst.MapFlags.WRITE) as mapped:
                 // do_something with mapped
 
 #### Get Gst.Buffer shape (width,height) from Gst.Caps
-    from pygst_utils import get_buffer_size
+    from gstreamer import get_buffer_size
     ret, (width, height) = get_buffer_size(Gst.Caps)
 
 #### Convert Gst.Buffer to np.ndarray
-    from pygst_utils import gst_buffer_to_ndarray, gst_buffer_with_pad_to_ndarray
+    from gstreamer import gst_buffer_to_ndarray, gst_buffer_with_pad_to_ndarray
 
     array = gst_buffer_to_ndarray(Gst.Buffer, width, height, channels)
     # or
@@ -48,7 +48,7 @@ PYTHONPATH=. pytest tests/ -s --verbose
 ### GstPipeline
 - With **GstPipeline** run any **gst-launch** pipeline in Python
 ```bash
-from pygst_utils import GstPipeline
+from gstreamer import GstPipeline
 
 command = "videotestsrc num-buffers=100 ! fakesink sync=false"
 with GstPipeline(command) as pipeline:
@@ -59,7 +59,7 @@ with GstPipeline(command) as pipeline:
 #### GstVideoSource based on AppSink
 - With **GstVideoSource** run any **gst-launch** pipeline and receive buffers in Python
 ```bash
-from pygst_utils import GstVideoSource
+from gstreamer import GstVideoSource
 
 width, height, num_buffers = 1920, 1080, 100
 caps_filter = 'capsfilter caps=video/x-raw,format=RGB,width={},height={}'.format(width, height)
@@ -77,7 +77,7 @@ with GstVideoSource(command) as pipeline:
 #### GstVideoSink based on AppSrc
 - With **GstVideoSink** push buffers in Python to any **gst-launch** pipeline
 ```bash
-from pygst_utils import GstVideoSink
+from gstreamer import GstVideoSink
 
 width, height = 1920, 1080
 command = "appsrc emit-signals=True is-live=True ! videoconvert ! fakesink sync=false"
@@ -88,7 +88,7 @@ with GstVideoSink(command, width=width, height=height) as pipeline:
 
 ### Metadata
 
-#### [Object Info MedataData](https://github.com/jackersson/pygst-utils/blob/master/pygst_utils/gst_objects_info_meta.py)
+#### [Object Info MedataData](https://github.com/jackersson/gstreamer-python/blob/master/pygst_utils/gst_objects_info_meta.py)
 
        x
        y

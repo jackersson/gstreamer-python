@@ -8,8 +8,8 @@ from fractions import Fraction
 import numpy as np
 import pytest
 
-from pygst_utils import GstVideo
-import pygst_utils as pygst
+from gstreamer import GstVideo
+import gstreamer as gst
 
 
 NUM_BUFFERS = 10
@@ -43,7 +43,7 @@ def test_video_sink():
 
     for frame in FRAMES:
         h, w = frame.buffer.shape[:2]
-        with pygst.GstVideoSink(command, width=w, height=h, video_frmt=frame.buffer_format) as pipeline:
+        with gst.GstVideoSink(command, width=w, height=h, video_frmt=frame.buffer_format) as pipeline:
             assert pipeline.total_buffers_count == 0
 
             # wait pipeline to initialize
@@ -71,7 +71,7 @@ def test_video_source():
             fmt, width, height)
         command = 'videotestsrc num-buffers={} ! {} ! appsink emit-signals=True sync=false'.format(
             num_buffers, caps_filter)
-        with pygst.GstVideoSource(command) as pipeline:
+        with gst.GstVideoSource(command) as pipeline:
 
             num_read = 0
             while num_read < num_buffers:
@@ -86,8 +86,8 @@ def test_video_source():
 
 def test_gst_pipeline():
     command = "videotestsrc num-buffers=100 ! fakesink sync=false"
-    with pygst.GstPipeline(command) as pipeline:
-        assert isinstance(pipeline, pygst.GstPipeline)
+    with gst.GstPipeline(command) as pipeline:
+        assert isinstance(pipeline, gst.GstPipeline)
 
 
 @pytest.mark.skip
@@ -105,8 +105,8 @@ def test_video_src_to_source():
         caps_filter = f'capsfilter caps=video/x-raw,format={fmt},width={w},height={h}'
         source_command = f'videotestsrc num-buffers={num_buffers} ! {caps_filter} ! appsink emit-signals=True sync=false'
 
-        with pygst.GstVideoSink(sink_command, width=w, height=h, video_frmt=frame.buffer_format) as sink, \
-                pygst.GstVideoSource(source_command) as src:
+        with gst.GstVideoSink(sink_command, width=w, height=h, video_frmt=frame.buffer_format) as sink, \
+                gst.GstVideoSource(source_command) as src:
             assert sink.total_buffers_count == 0
 
             # wait pipeline to initialize
@@ -133,9 +133,9 @@ def test_metadata():
     np_buffer = np.random.randint(
         low=0, high=255, size=(HEIGHT, WIDTH, 3), dtype=np.uint8)
 
-    gst_buffer = pygst.numpy_to_gst_buffer(np_buffer)
+    gst_buffer = gst.numpy_to_gst_buffer(np_buffer)
 
-    from pygst_utils.gst_objects_info_meta import gst_meta_write, gst_meta_get, gst_meta_remove
+    from gstreamer.gst_objects_info_meta import gst_meta_write, gst_meta_get, gst_meta_remove
 
     objects = [
         {'class_name': "person", 'bounding_box': [
