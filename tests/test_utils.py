@@ -43,7 +43,7 @@ def test_video_sink():
 
     for frame in FRAMES:
         h, w = frame.buffer.shape[:2]
-        with gst.GstVideoSink(command, width=w, height=h, video_frmt=frame.buffer_format) as pipeline:
+        with gst.GstContext(), gst.GstVideoSink(command, width=w, height=h, video_frmt=frame.buffer_format) as pipeline:
             assert pipeline.total_buffers_count == 0
 
             # wait pipeline to initialize
@@ -71,7 +71,7 @@ def test_video_source():
             fmt, width, height)
         command = 'videotestsrc num-buffers={} ! {} ! appsink emit-signals=True sync=false'.format(
             num_buffers, caps_filter)
-        with gst.GstVideoSource(command) as pipeline:
+        with gst.GstContext(), gst.GstVideoSource(command) as pipeline:
 
             num_read = 0
             while num_read < num_buffers:
@@ -86,12 +86,11 @@ def test_video_source():
 
 def test_gst_pipeline():
     command = "videotestsrc num-buffers=100 ! fakesink sync=false"
-    with gst.GstPipeline(command) as pipeline:
-        assert False
+    with gst.GstContext(), gst.GstPipeline(command) as pipeline:
         assert isinstance(pipeline, gst.GstPipeline)
 
 
-@pytest.mark.skip
+# @pytest.mark.skip
 def test_video_src_to_source():
 
     num_buffers = NUM_BUFFERS
@@ -106,7 +105,7 @@ def test_video_src_to_source():
         caps_filter = f'capsfilter caps=video/x-raw,format={fmt},width={w},height={h}'
         src_cmd = f'videotestsrc num-buffers={num_buffers} ! {caps_filter} ! appsink emit-signals=True sync=false'
 
-        with gst.GstVideoSink(sink_cmd, width=w, height=h, video_frmt=frame.buffer_format) as sink, \
+        with gst.GstContext(), gst.GstVideoSink(sink_cmd, width=w, height=h, video_frmt=frame.buffer_format) as sink, \
                 gst.GstVideoSource(src_cmd) as src:
             assert sink.total_buffers_count == 0
 

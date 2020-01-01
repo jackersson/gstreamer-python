@@ -18,6 +18,7 @@ Usage Example:
 """
 
 import os
+import time
 import queue
 import logging
 import threading
@@ -70,7 +71,8 @@ _CHANNELS = {
 
 
 _SUPPORTED_CHANNELS_NUM = set(_CHANNELS.values())
-_SUPPORTED_VIDEO_FORMATS = [GstVideo.VideoFormat.to_string(s) for s in _CHANNELS.keys()]
+_SUPPORTED_VIDEO_FORMATS = [
+    GstVideo.VideoFormat.to_string(s) for s in _CHANNELS.keys()]
 
 
 def get_num_channels(fmt: GstVideo.VideoFormat) -> int:
@@ -94,6 +96,59 @@ def gst_state_to_str(state: Gst.State) -> str:
     return Gst.Element.state_get_name(state)
 
 
+class GstContext:
+
+    def __init__(self):
+        self._main_loop = GLib.MainLoop()
+        self._main_loop_thread = threading.Thread(target=self._main_loop_run)
+
+        self._log = logging.getLogger(
+            'pygst.{}'.format(self.__class__.__name__))
+
+    def __str__(self) -> str:
+        return self.__class__.__name__
+
+    def __repr__(self) -> str:
+        return '<{}>'.format(self)
+
+    def __enter__(self):
+        self.startup()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.shutdown()
+
+    @property
+    def log(self) -> logging.Logger:
+        return self._log
+
+    def startup(self):
+        if self._main_loop_thread.is_alive():
+            return
+
+        self._main_loop_thread.start()
+
+    def _main_loop_run(self):
+        try:
+            self._main_loop.run()
+        except Exception:
+            pass
+
+    def shutdown(self, timeout: int = 2):
+        self.log.debug("%s Quitting main loop ...", self)
+
+        if self._main_loop.is_running():
+            self._main_loop.quit()
+
+        self.log.debug("%s Joining main loop thread...", self)
+        try:
+            if self._main_loop_thread.is_alive():
+                self._main_loop_thread.join(timeout=timeout)
+        except Exception as err:
+            self.log.error("%s.main_loop_thread : %s", self, err)
+            pass
+
+
 class GstPipeline:
     """Base class to initialize any Gstreamer Pipeline from string"""
 
@@ -101,18 +156,15 @@ class GstPipeline:
         """
         :param command: gst-launch string
         """
-
         self._command = command
-        self._main_loop = None     # GObject.MainLoop
-        self._pipeline = None      # Gst.Pipeline
-        self._bus = None           # Gst.Bus
+        self._pipeline = None        # Gst.Pipeline
+        self._bus = None             # Gst.Bus
 
-        self._log = logging.getLogger('pygst.{}'.format(self.__class__.__name__))
+        self._log = logging.getLogger(
+            'pygst.{}'.format(self.__class__.__name__))
         self._log.info("%s \n gst-launch-1.0 %s", self, command)
 
-        self._end_event = threading.Event()
-        self._pipeline_end_event = threading.Event()
-        self._main_loop_thread = threading.Thread(target=self._main_loop_run)
+        self._end_stream_event = threading.Event()
 
     @property
     def log(self) -> logging.Logger:
@@ -143,14 +195,10 @@ class GstPipeline:
 
     def startup(self):
         """ Starts pipeline """
-        if self.is_active:
+        if self._pipeline:
             raise RuntimeError("Can't initiate %s. Already started")
 
         self._pipeline = Gst.parse_launch(self._command)
-
-        # Due to SIGINT handle
-        # https://github.com/beetbox/audioread/issues/63#issuecomment-390394735
-        self._main_loop = GLib.MainLoop.new(None, False)
 
         # Initialize Bus
         self._bus = self._pipeline.get_bus()
@@ -165,30 +213,17 @@ class GstPipeline:
 
         self.log.info('Starting %s', self)
 
-        self._end_event.clear()
-        self._pipeline_end_event.clear()
+        self._end_stream_event.clear()
 
-        self.log.debug("%s Setting pipeline state to %s ... ", self, gst_state_to_str(Gst.State.PLAYING))
+        self.log.debug("%s Setting pipeline state to %s ... ",
+                       self, gst_state_to_str(Gst.State.PLAYING))
         self._pipeline.set_state(Gst.State.PLAYING)
-        self.log.debug("%s Pipeline state set to %s ", self, gst_state_to_str(Gst.State.PLAYING))
-
-        self._main_loop_thread.start()
+        self.log.debug("%s Pipeline state set to %s ", self,
+                       gst_state_to_str(Gst.State.PLAYING))
 
     def _on_pipeline_init(self) -> None:
         """Sets additional properties for plugins in Pipeline"""
         pass
-
-    def _main_loop_run(self):
-        if self.shutdown_requested:
-            return
-
-        try:
-            self.log.debug("%s Starting main loop ... ", self)
-            self._main_loop.run()
-        except KeyboardInterrupt:
-            self.log.error("Error %s: %s", "KeyboardInterrupt", self)
-        finally:
-            self._stop_pipeline()
 
     @property
     def bus(self) -> Gst.Bus:
@@ -198,23 +233,29 @@ class GstPipeline:
     def pipeline(self) -> Gst.Pipeline:
         return self._pipeline
 
-    def _stop_pipeline(self, timeout: int = 1, eos: bool = False) -> None:
+    def _shutdown_pipeline(self, timeout: int = 1, eos: bool = False) -> None:
         """ Stops pipeline
         :param eos: if True -> send EOS event
             - EOS event necessary for FILESINK finishes properly
             - Use when pipeline crushes
         """
-        if self.is_done:
+
+        if self._end_stream_event.is_set():
+            return
+
+        self._end_stream_event.set()
+
+        if not self.pipeline:
             return
 
         self.log.debug("%s Stopping pipeline ...", self)
 
-        self._pipeline_end_event.set()
-
-        if eos or self.shutdown_requested:
+        # https://lazka.github.io/pgi-docs/Gst-1.0/classes/Element.html#Gst.Element.get_state
+        if eos and self._pipeline.get_state(timeout=1)[1] != Gst.State.PLAYING:
             self.log.debug("%s Sending EOS event ...", self)
             try:
-                thread = threading.Thread(target=self._pipeline.send_event, args=(Gst.Event.new_eos(),))
+                thread = threading.Thread(
+                    target=self._pipeline.send_event, args=(Gst.Event.new_eos(),))
                 thread.start()
                 thread.join(timeout=timeout)
             except Exception:
@@ -222,53 +263,37 @@ class GstPipeline:
 
         self.log.debug("%s Reseting pipeline state ....", self)
         self._pipeline.set_state(Gst.State.NULL)
-        del self._pipeline
-
-        self.log.debug("%s Quitting main loop ...", self)
-        self._main_loop.quit()
-
-        self.log.debug("%s Joining main loop thread...", self)
-        try:
-            if self._main_loop_thread.is_alive():
-                self._main_loop_thread.join(timeout=timeout)
-        except Exception as err:
-            self.log.error("%s.main_loop_thread : %s", self, err)
+        self._pipeline = None
 
     def shutdown(self, timeout: int = 1, eos: bool = False) -> None:
         """Shutdown pipeline
         :param timeout: time to wait when pipeline fully stops
+        :param eos: if True -> send EOS event
+            - EOS event necessary for FILESINK finishes properly
+            - Use when pipeline crushes
         """
-        if self.shutdown_requested:
-            return
-
         self.log.info('%s Shutdown requested ...', self)
 
-        self._end_event.set()
-
-        self._stop_pipeline(timeout=timeout, eos=eos)
+        self._shutdown_pipeline(timeout=timeout, eos=eos)
 
         self.log.info('%s successfully destroyed', self)
 
     @property
     def is_active(self) -> bool:
-        return self._main_loop and self._main_loop.is_running()
+        return self.pipeline is not None and not self.is_done
 
     @property
     def is_done(self) -> bool:
-        return self._pipeline_end_event.is_set()
-
-    @property
-    def shutdown_requested(self) -> bool:
-        return self._end_event.is_set()
+        return self._end_stream_event.is_set()
 
     def on_error(self, bus: Gst.Bus, message: Gst.Message):
         err, dbg = msg.parse_error()
         self.log.error("Gstreamer.%s: Error %s: %s. ", self, err, debug)
-        self._stop_pipeline()
+        self._shutdown_pipeline()
 
     def on_eos(self, bus: Gst.Bus, message: Gst.Message):
         self.log.debug("Gstreamer.%s: Received stream EOS event", self)
-        self._stop_pipeline()
+        self._shutdown_pipeline()
 
     def on_warning(self, bus: Gst.Bus, message: Gst.Message):
         warn, debug = message.parse_warning()
@@ -303,7 +328,8 @@ def gst_video_format_plugin(*, width: int = None, height: int = None, fps: Fract
     plugin = str(video_type.value)
     n = len(plugin)
     if video_frmt:
-        plugin += ',format={}'.format(GstVideo.VideoFormat.to_string(video_frmt))
+        plugin += ',format={}'.format(
+            GstVideo.VideoFormat.to_string(video_frmt))
     if width and width > 0:
         plugin += ',width={}'.format(width)
     if height and height > 0:
@@ -386,7 +412,8 @@ class GstVideoSink(GstPipeline):
             gst_buffer = Gst.Buffer.new_wrapped(bytes(buffer))
 
         if not isinstance(gst_buffer, Gst.Buffer):
-            raise ValueError('Invalid buffer format {} != {}'.format(type(gst_buffer), Gst.Buffer))
+            raise ValueError('Invalid buffer format {} != {}'.format(
+                type(gst_buffer), Gst.Buffer))
 
         gst_buffer.pts = pts or GLib.MAXUINT64
         gst_buffer.dts = dts or GLib.MAXUINT64
@@ -398,10 +425,10 @@ class GstVideoSink(GstPipeline):
              pts: typ.Optional[int] = None, dts: typ.Optional[int] = None,
              offset: typ.Optional[int] = None) -> None:
 
-        if self.shutdown_requested or not self.is_active:
-            stop_requested = "Stop requested" if self.shutdown_requested else ""
-            is_active = "Not active" if not self.is_active else ""
-            self.log.warning("Warning %s: Can't push buffer. %s. %s", self, stop_requested, is_active)
+        # FIXME: maybe put in queue first
+        if not self.is_active:
+            self.log.warning(
+                "Warning %s: Can't push buffer. Pipeline not active")
             return
 
         if not self._src:
@@ -426,13 +453,12 @@ class GstVideoSink(GstPipeline):
         return int(self._pts / self._duration)
 
     def shutdown(self, timeout: int = 1, eos: bool = False):
-        if self.shutdown_requested:
-            return
 
-        if isinstance(self._src, GstApp.AppSrc):
-            # Emit 'end-of-stream' signal
-            # https://lazka.github.io/pgi-docs/GstApp-1.0/classes/AppSrc.html#GstApp.AppSrc.signals.end_of_stream
-            self._src.emit("end-of-stream")
+        if self.is_active:
+            if isinstance(self._src, GstApp.AppSrc):
+                # Emit 'end-of-stream' signal
+                # https://lazka.github.io/pgi-docs/GstApp-1.0/classes/AppSrc.html#GstApp.AppSrc.signals.end_of_stream
+                self._src.emit("end-of-stream")
 
         super().shutdown(timeout=timeout, eos=eos)
 
@@ -495,7 +521,8 @@ class GstVideoSource(GstPipeline):
         self._sink = None    # GstApp.AppSink
         self._counter = 0    # counts number of received buffers
 
-        queue_cls = partial(LeakyQueue, on_drop=self._on_drop) if leaky else queue.Queue
+        queue_cls = partial(
+            LeakyQueue, on_drop=self._on_drop) if leaky else queue.Queue
         self._queue = queue_cls(maxsize=max_buffers_size)  # Queue of GstBuffer
 
     @property
@@ -577,23 +604,18 @@ class GstVideoSource(GstPipeline):
 
             return Gst.FlowReturn.OK
 
-        self.log.error("Error : Not expected buffer type: %s != %s. %s", type(sample), Gst.Sample, self)
+        self.log.error("Error : Not expected buffer type: %s != %s. %s", type(
+            sample), Gst.Sample, self)
         return Gst.FlowReturn.ERROR
 
     def pop(self, timeout: float = 0.1) -> typ.Optional[GstBuffer]:
         """ Pops GstBuffer """
-        if self.shutdown_requested:
-            self.log.warning("Warning %s: %s", self, "Can't pop buffer. Shutdown Requested ")
-            return None
-
         if not self._sink:
-            raise RuntimeError('Sink {} is not initialized'.format(Gst.AppSink))
+            raise RuntimeError(
+                'Sink {} is not initialized'.format(Gst.AppSink))
 
         buffer = None
         while (self.is_active or not self._queue.empty()) and not buffer:
-            if self.shutdown_requested and self._queue.empty():
-                break
-
             try:
                 buffer = self._queue.get(timeout=timeout)
             except queue.Empty:
