@@ -16,7 +16,7 @@ pip install --upgrade --requirement requirements.txt
 ```
 
 #### pip-package
-    pip install git+https://github.com/jackersson/pygst-utils.git
+    pip install git+https://github.com/jackersson/gstreamer-python.git
 
 ### Test
 ```bash
