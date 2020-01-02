@@ -543,7 +543,7 @@ class GstVideoSource(GstPipeline):
 
         w, h = caps_.get_value('width'), caps_.get_value('height')
         c = get_num_channels(video_format)
-        dtype = get_np_dtype(np.uint8)
+        dtype = get_np_dtype(video_format)
 
         # Copy buffer into np.ndarray
         array = np.ndarray((h, w, c), dtype=dtype,
