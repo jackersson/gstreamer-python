@@ -17,6 +17,7 @@ Usage Example:
 >>>
 """
 
+import sys
 import os
 import time
 import queue
@@ -36,7 +37,9 @@ gi.require_version('GstApp', '1.0')
 gi.require_version('GstVideo', '1.0')
 from gi.repository import Gst, GLib, GObject, GstApp, GstVideo  # noqa:F401,F402
 
-Gst.init(None)
+from .utils import *  # noqa:F401,F402
+
+Gst.init(sys.argv)
 
 
 class NamedEnum(Enum):
@@ -56,44 +59,6 @@ class VideoType(NamedEnum):
     VIDEO_RAW = 'video/x-raw'
     VIDEO_GL_RAW = "video/x-raw(memory:GLMemory)"
     VIDEO_NVVM_RAW = "video/x-raw(memory:NVMM)"
-
-
-_CHANNELS = {
-    GstVideo.VideoFormat.RGB: 3,
-    GstVideo.VideoFormat.RGBA: 4,
-    GstVideo.VideoFormat.RGBX: 4,
-    GstVideo.VideoFormat.BGR: 3,
-    GstVideo.VideoFormat.BGRA: 4,
-    GstVideo.VideoFormat.BGRX: 4,
-    GstVideo.VideoFormat.GRAY8: 1,
-    GstVideo.VideoFormat.GRAY16_BE: 1
-}
-
-
-_SUPPORTED_CHANNELS_NUM = set(_CHANNELS.values())
-_SUPPORTED_VIDEO_FORMATS = [
-    GstVideo.VideoFormat.to_string(s) for s in _CHANNELS.keys()]
-
-
-def get_num_channels(fmt: GstVideo.VideoFormat) -> int:
-    return _CHANNELS[fmt]
-
-
-_DTYPES = {
-    GstVideo.VideoFormat.GRAY16_BE: np.float16
-}
-
-
-def get_np_dtype(fmt: GstVideo.VideoFormat) -> np.number:
-    return _DTYPES.get(fmt, np.uint8)
-
-
-def gst_state_to_str(state: Gst.State) -> str:
-    """Converts Gst.State to str representation
-
-    Explained: https://lazka.github.io/pgi-docs/Gst-1.0/classes/Element.html#Gst.Element.state_get_name
-    """
-    return Gst.Element.state_get_name(state)
 
 
 class GstContext:
@@ -298,11 +263,6 @@ class GstPipeline:
     def on_warning(self, bus: Gst.Bus, message: Gst.Message):
         warn, debug = message.parse_warning()
         self.log.warning("Gstreamer.%s: %s. %s", self, warn, debug)
-
-
-def fraction_to_str(fraction: Fraction) -> str:
-    """Converts fraction to str"""
-    return '{}/{}'.format(fraction.numerator, fraction.denominator)
 
 
 def gst_video_format_plugin(*, width: int = None, height: int = None, fps: Fraction = None,

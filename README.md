@@ -32,6 +32,11 @@ export LIB_GSTREAMER_PATH=libgstreamer-1.0.so.0
 ```
 Export **LIB_GSTREAMER_PATH** with custom path to **libgstreamer.so**
 
+##### Setup Log Level
+```bash
+export GST_PYTHON_LOG_LEVEL=0, 1, 2, 3, 4, 5
+```
+
 #### [Make Gst.Buffer writable](http://lifestyletransfer.com/how-to-make-gstreamer-buffer-writable-in-python/)
     from gstreamer import map_gst_buffer
     with map_gst_buffer(pbuffer, Gst.MapFlags.READ | Gst.MapFlags.WRITE) as mapped:

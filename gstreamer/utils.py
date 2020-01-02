@@ -1,11 +1,52 @@
 import typing as typ
+from fractions import Fraction
+
 import numpy as np
 
 import gi
 gi.require_version('Gst', '1.0')
-from gi.repository import Gst  # noqa:F401,F402
+gi.require_version('GstVideo', '1.0')
+from gi.repository import Gst, GstVideo  # noqa:F401,F402
 
 from .gst_hacks import map_gst_buffer, get_buffer_size  # noqa:F401,F402
+
+
+_CHANNELS = {
+    GstVideo.VideoFormat.RGB: 3,
+    GstVideo.VideoFormat.RGBA: 4,
+    GstVideo.VideoFormat.RGBX: 4,
+    GstVideo.VideoFormat.BGR: 3,
+    GstVideo.VideoFormat.BGRA: 4,
+    GstVideo.VideoFormat.BGRX: 4,
+    GstVideo.VideoFormat.GRAY8: 1,
+    GstVideo.VideoFormat.GRAY16_BE: 1
+}
+
+
+def get_num_channels(fmt: GstVideo.VideoFormat) -> int:
+    return _CHANNELS[fmt]
+
+
+_DTYPES = {
+    GstVideo.VideoFormat.GRAY16_BE: np.float16
+}
+
+
+def get_np_dtype(fmt: GstVideo.VideoFormat) -> np.number:
+    return _DTYPES.get(fmt, np.uint8)
+
+
+def fraction_to_str(fraction: Fraction) -> str:
+    """Converts fraction to str"""
+    return '{}/{}'.format(fraction.numerator, fraction.denominator)
+
+
+def gst_state_to_str(state: Gst.State) -> str:
+    """Converts Gst.State to str representation
+
+    Explained: https://lazka.github.io/pgi-docs/Gst-1.0/classes/Element.html#Gst.Element.state_get_name
+    """
+    return Gst.Element.state_get_name(state)
 
 
 def gst_buffer_to_ndarray(buffer: Gst.Buffer, width: int, height: int, channels: int = 3) -> np.ndarray:
