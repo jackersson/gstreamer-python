@@ -28,7 +28,7 @@ import time
 from gstreamer import GstContext, GstPipeline
 
 with GstContext():
-  with GstPipeline("videotestsrc num-buffers=100 ! autovideosink") as p
+  with GstPipeline("videotestsrc num-buffers=100 ! autovideosink") as p:
     while not p.is_done:
       time.sleep(1)  
 ```
