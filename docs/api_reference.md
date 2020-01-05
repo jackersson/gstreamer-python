@@ -1,9 +1,9 @@
 ## GstContext
 ### Purpose
-- Hides GObject.MainLoop routine in single class
+- Hides [GObject.MainLoop](https://lazka.github.io/pgi-docs/GLib-2.0/structs/MainLoop.html) routine in single class
 
 ### Example
-```bash
+```python
 import time
 from gstreamer import GstContext
 
@@ -20,10 +20,10 @@ with GstContext():
 
 ## GstPipeline
 ### Purpose
-- Hides Gst.Pipeline creation and message handling in single class
+- Hides [Gst.Pipeline](https://lazka.github.io/pgi-docs/Gst-1.0/classes/Pipeline.html) creation and message handling in single class
 
 ### Example
-```bash
+```python
 import time
 from gstreamer import GstContext, GstPipeline
 
