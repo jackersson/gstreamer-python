@@ -8,14 +8,14 @@ import os
 from pathlib import Path
 
 from setuptools import setup
-from setuptools.command.install import install as _install
+from setuptools.command.build_py import build_py as _build_py
 
 
 def read(file):
     return Path(file).read_text('utf-8').strip()
 
 
-class install(_install):
+class build_py(_build_py):
 
     def run(self):
         import subprocess
@@ -32,7 +32,7 @@ class install(_install):
         _run_bash_file(os.path.join(cwd, 'build-gst-python.sh'))
         _run_bash_file(os.path.join(cwd, 'build-3rd-party.sh'))
 
-        _install.run(self)
+        _build_py.run(self)
 
 
 install_requires = [
@@ -63,6 +63,6 @@ setup(
         'Programming Language :: Python :: 3.6',
     ],
     cmdclass={
-        'install': install,
+        'build_py': build_py,
     }
 )
