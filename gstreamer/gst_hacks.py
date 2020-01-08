@@ -96,21 +96,3 @@ def map_gst_memory(memory: Gst.Memory, flags: Gst.MapFlags) -> _GST_MAP_INFO_POI
             mapping.data, POINTER(c_byte * mapping.size)).contents
     finally:
         _libgst.gst_memory_unmap(ptr, mapping)
-
-
-def get_buffer_size(caps: Gst.Caps) -> Tuple[bool, Tuple[int, int]]:
-    """ Get Gst.Buffer's (width, height) from Gst.Caps
-
-    :rtype: Tuple[bool, Tuple[int, int]]
-        bool            : (success flag)
-        Tuple (int, int): (width, height)
-    """
-
-    caps_struct = caps.get_structure(0)
-    (success, width) = caps_struct .get_int('width')
-    if not success:
-        return False, (0, 0)
-    (success, height) = caps_struct .get_int('height')
-    if not success:
-        return False, (0, 0)
-    return True, (width, height)

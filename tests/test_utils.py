@@ -133,7 +133,7 @@ def test_metadata():
     np_buffer = np.random.randint(
         low=0, high=255, size=(HEIGHT, WIDTH, 3), dtype=np.uint8)
 
-    gst_buffer = gst.numpy_to_gst_buffer(np_buffer)
+    gst_buffer = gst.ndarray_to_gst_buffer(np_buffer)
 
     from gstreamer.gst_objects_info_meta import gst_meta_write, gst_meta_get, gst_meta_remove
 

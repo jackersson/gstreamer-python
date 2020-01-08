@@ -8,7 +8,7 @@ gi.require_version('Gst', '1.0')
 gi.require_version('GstVideo', '1.0')
 from gi.repository import Gst, GstVideo  # noqa:F401,F402
 
-from .gst_hacks import map_gst_buffer, get_buffer_size  # noqa:F401,F402
+from .gst_hacks import map_gst_buffer  # noqa:F401,F402
 
 
 _CHANNELS = {
@@ -49,30 +49,36 @@ def gst_state_to_str(state: Gst.State) -> str:
     return Gst.Element.state_get_name(state)
 
 
-def gst_buffer_to_ndarray(buffer: Gst.Buffer, width: int, height: int, channels: int = 3) -> np.ndarray:
-    """Converts Gst.Buffer with known format (width, height, channels) to np.ndarray
+def gst_video_format_from_string(frmt: str) -> GstVideo.VideoFormat:
+    return GstVideo.VideoFormat.from_string(frmt)
 
-    :rtype: np.ndarray (height, width, channels)
-    """
+
+def gst_buffer_to_ndarray(buffer: Gst.Buffer, *, width: int, height: int, channels: int, dtype: np.dtype) -> np.ndarray:
+    """Converts Gst.Buffer with known format (w, h, c, dtype) to np.ndarray"""
     with map_gst_buffer(buffer, Gst.MapFlags.READ) as mapped:
-        # TODO: Check format
-        return np.ndarray((height, width, channels), buffer=mapped, dtype=np.uint8)
+        return np.ndarray((height, width, channels), buffer=mapped, dtype=dtype)
 
 
-def gst_buffer_with_pad_to_ndarray(buffer: Gst.Buffer, pad: Gst.Pad, channels: int = 3) -> np.ndarray:
-    """ Converts Gst.Buffer with Gst.Pad (stores buffer format) to np.ndarray
-
-    :rtype: np.ndarray (height, width, channels)
-    """
-
-    success, (width, height) = get_buffer_size(pad.get_current_caps())
-    if not success:
-        raise ValueError('Invalid buffer size.')
-
-    return gst_buffer_to_ndarray(buffer, width, height, channels)
+def gst_buffer_with_pad_to_ndarray(buffer: Gst.Buffer, pad: Gst.Pad) -> np.ndarray:
+    """Converts Gst.Buffer with Gst.Pad (stores Gst.Caps) to np.ndarray """
+    return gst_buffer_with_caps_to_ndarray(buffer, pad.get_current_caps())
 
 
-def numpy_to_gst_buffer(array: np.ndarray) -> Gst.Buffer:
+def gst_buffer_with_caps_to_ndarray(buffer: Gst.Buffer, caps: Gst.Caps) -> np.ndarray:
+    """ Converts Gst.Buffer with Gst.Caps (stores buffer info) to np.ndarray """
+
+    structure = caps.get_structure(0)  # Gst.Structure
+
+    # GstVideo.VideoFormat
+    video_format = gst_video_format_from_string(structure.get_value('format'))
+
+    channels = utils.get_num_channels(video_format)
+    dtype = utils.get_np_dtype(video_format)  # np.dtype
+
+    return gst_buffer_to_ndarray(buffer, width=width, height=height, channels=channels, dtype=dtype)
+
+
+def ndarray_to_gst_buffer(array: np.ndarray) -> Gst.Buffer:
     """Converts numpy array to Gst.Buffer"""
     return Gst.Buffer.new_wrapped(array.tobytes())
 
