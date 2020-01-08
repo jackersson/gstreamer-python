@@ -8,8 +8,9 @@ from fractions import Fraction
 import numpy as np
 import pytest
 
-from gstreamer import GstVideo
+from gstreamer import GstVideo, Gst
 import gstreamer as gst
+import gstreamer.utils as utils
 
 
 NUM_BUFFERS = 10
@@ -164,3 +165,21 @@ def test_metadata():
     # remove metadata
     gst_meta_remove(gst_buffer)
     assert len(gst_meta_get(gst_buffer)) == 0
+
+
+def test_gst_buffer_to_ndarray():
+
+    caps = Gst.Caps.from_string(
+        f"video/x-raw,format={FORMAT},width={WIDTH},height={HEIGHT}")
+
+    video_format = utils.gst_video_format_from_string(FORMAT)
+    channels = utils.get_num_channels(video_format)
+    dtype = utils.get_np_dtype(video_format)
+
+    npndarray = np.random.randint(low=0, high=255, size=(
+        HEIGHT, WIDTH, channels), dtype=dtype)
+    gst_buffer = utils.ndarray_to_gst_buffer(npndarray)
+
+    res_npndarray = utils.gst_buffer_with_caps_to_ndarray(gst_buffer, caps)
+
+    assert (npndarray == res_npndarray).all()

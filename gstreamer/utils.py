@@ -69,11 +69,13 @@ def gst_buffer_with_caps_to_ndarray(buffer: Gst.Buffer, caps: Gst.Caps) -> np.nd
 
     structure = caps.get_structure(0)  # Gst.Structure
 
+    width, height = structure.get_value("width"), structure.get_value("height")
+
     # GstVideo.VideoFormat
     video_format = gst_video_format_from_string(structure.get_value('format'))
 
-    channels = utils.get_num_channels(video_format)
-    dtype = utils.get_np_dtype(video_format)  # np.dtype
+    channels = get_num_channels(video_format)
+    dtype = get_np_dtype(video_format)  # np.dtype
 
     return gst_buffer_to_ndarray(buffer, width=width, height=height, channels=channels, dtype=dtype)
 
