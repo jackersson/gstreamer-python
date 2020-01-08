@@ -39,7 +39,7 @@ from gi.repository import Gst, GLib, GObject, GstApp, GstVideo  # noqa:F401,F402
 
 from .utils import *  # noqa:F401,F402
 
-Gst.init(sys.argv)
+Gst.init(sys.argv if hasattr(sys, 'argv') else None)
 
 
 class NamedEnum(Enum):
