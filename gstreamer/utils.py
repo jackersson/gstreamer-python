@@ -80,6 +80,12 @@ def gst_buffer_with_caps_to_ndarray(buffer: Gst.Buffer, caps: Gst.Caps) -> np.nd
     return gst_buffer_to_ndarray(buffer, width=width, height=height, channels=channels, dtype=dtype)
 
 
+def get_buffer_size_from_gst_caps(caps: Gst.Caps) -> typ.Tuple[int, int]:
+    """Returns buffers width, height from Gst.Caps """
+    structure = caps.get_structure(0)  # Gst.Structure
+    return structure.get_value("width"), structure.get_value("height")
+
+
 def ndarray_to_gst_buffer(array: np.ndarray) -> Gst.Buffer:
     """Converts numpy array to Gst.Buffer"""
     return Gst.Buffer.new_wrapped(array.tobytes())
