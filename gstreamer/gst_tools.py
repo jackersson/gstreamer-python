@@ -357,6 +357,10 @@ class GstVideoSink(GstPipeline):
             # this instructs appsrc that we will be dealing with timed buffer
             self._src.set_property("format", Gst.Format.TIME)
 
+            # instructs appsrc to block pushing buffers until ones in queue are preprocessed
+            # allows to avoid huge queue internal queue size in appsrc
+            self._src.set_property("block", True)
+
             # set src caps
             caps = gst_video_format_plugin(
                 width=self._width, height=self._height,
