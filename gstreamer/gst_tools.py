@@ -216,7 +216,7 @@ class GstPipeline:
         self.log.debug("%s Stopping pipeline ...", self)
 
         # https://lazka.github.io/pgi-docs/Gst-1.0/classes/Element.html#Gst.Element.get_state
-        if eos and self._pipeline.get_state(timeout=1)[1] != Gst.State.PLAYING:
+        if self._pipeline.get_state(timeout=1)[1] == Gst.State.PLAYING:
             self.log.debug("%s Sending EOS event ...", self)
             try:
                 thread = threading.Thread(
@@ -227,8 +227,15 @@ class GstPipeline:
                 pass
 
         self.log.debug("%s Reseting pipeline state ....", self)
-        self._pipeline.set_state(Gst.State.NULL)
-        self._pipeline = None
+        try:
+            def clean(self):
+                self._pipeline.set_state(Gst.State.NULL)
+                self._pipeline = None
+            thread = threading.Thread(target=clean, args=(self,))
+            thread.start()
+            thread.join(timeout=timeout)
+        except Exception:
+            pass
 
     def shutdown(self, timeout: int = 1, eos: bool = False) -> None:
         """Shutdown pipeline
@@ -252,7 +259,7 @@ class GstPipeline:
         return self._end_stream_event.is_set()
 
     def on_error(self, bus: Gst.Bus, message: Gst.Message):
-        err, dbg = msg.parse_error()
+        err, debug = message.parse_error()
         self.log.error("Gstreamer.%s: Error %s: %s. ", self, err, debug)
         self._shutdown_pipeline()
 
