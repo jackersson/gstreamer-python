@@ -9,8 +9,8 @@ NUM_BUFFERS = 1000
 VIDEO_FORMAT = GstVideo.VideoFormat.RGB
 
 video_format_str = GstVideo.VideoFormat.to_string(VIDEO_FORMAT)
-caps_filter = f"capsfilter caps=video/x-raw,format={video_format_str},width={WIDTH},height={HEIGHT}"
-capture_cmd = f"videotestsrc num-buffers={NUM_BUFFERS} ! {caps_filter} ! appsink emit-signals=True sync=false"
+caps_filter = "capsfilter caps=video/x-raw,format={video_format_str},width={WIDTH},height={HEIGHT}".format(**locals())
+capture_cmd = "videotestsrc num-buffers={NUM_BUFFERS} ! {caps_filter} ! appsink emit-signals=True sync=false".format(**locals())
 
 display_cmd = "appsrc emit-signals=True is-live=True ! videoconvert ! gtksink sync=false"
 
@@ -29,4 +29,4 @@ with GstContext(), GstVideoSource(capture_cmd) as capture, \
         if buffer:
             display.push(buffer.data, pts=buffer.pts,
                          dts=buffer.dts, offset=buffer.offset)
-            # print(f"{Gst.TIME_ARGS(buffer.pts)}: shape {buffer.data.shape}")
+            # print("{}: shape {}".format(Gst.TIME_ARGS(buffer.pts), buffer.data.shape))

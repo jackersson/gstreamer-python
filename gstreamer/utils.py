@@ -111,4 +111,4 @@ def to_gst_string(plugins: typ.List[str]) -> str:
     plugins_ = flatten_list(plugins)
 
     # <!> between plugins (except tee)
-    return plugins_[0] + "".join([f"{'' if pl[-1] == '.' else ' !'} {pl}" for pl in plugins_[1:]])
+    return plugins_[0] + "".join(["{} {}".format('' if pl[-1] == '.' else ' !', pl) for pl in plugins_[1:]])
