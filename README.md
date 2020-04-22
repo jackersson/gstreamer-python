@@ -1,7 +1,7 @@
 ## gstreamer-python
 ### Purpose
 - abstraction over [PyGOBJECT API](https://lazka.github.io/pgi-docs/) for Gstreamer
-- work with Gstreamer metadata 
+- work with Gstreamer metadata
 - common tools for Gstreamer pipeline management
 - easy [gst-python](https://github.com/GStreamer/gst-python) installation
 
@@ -23,8 +23,16 @@ pip install --upgrade --requirement requirements.txt
 ```
 
 #### pip-package
-    pip install git+https://github.com/jackersson/gstreamer-python.git@{tag_name}#egg=gstreamer-python
+```bash
 
+pip install git+https://github.com/jackersson/gstreamer-python.git@{tag_name}#egg=gstreamer-python
+
+### to skip ./build-gst-python.sh
+pip install . -v --install-option "build_py" --install-option "--skip-gst-python"
+
+### to set specific gstreamer version
+export GST_VERSION=1.14.5
+```
 ### Test
 ```bash
 PYTHONPATH=. pytest tests/ -s --verbose

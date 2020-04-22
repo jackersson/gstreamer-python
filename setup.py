@@ -17,6 +17,19 @@ def read(file):
 
 class build_py(_build_py):
 
+    user_options = _build_py.user_options + [
+        ('skip-gst-python', None, "Skip gst-python build"),
+    ]
+
+    boolean_options = _build_py.boolean_options + ['skip-gst-python']
+
+    def initialize_options(self):
+        _build_py.initialize_options(self)
+        self.skip_gst_python = None
+
+    def finalize_options(self):
+        _build_py.finalize_options(self)
+
     def run(self):
         import subprocess
 
@@ -29,7 +42,8 @@ class build_py(_build_py):
                 print("Not found ", bash_file)
 
         cwd = os.path.dirname(os.path.abspath(__file__))
-        _run_bash_file(os.path.join(cwd, 'build-gst-python.sh'))
+        if not bool(self.skip_gst_python):
+            _run_bash_file(os.path.join(cwd, 'build-gst-python.sh'))
         _run_bash_file(os.path.join(cwd, 'build-3rd-party.sh'))
 
         _build_py.run(self)
