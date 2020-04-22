@@ -4,13 +4,11 @@
 
 LIBPYTHONPATH=""
 PYTHON=${PYTHON:-/usr/bin/python3}
-GST_VERSION=${GST_VERSION:"1.14.5"}
-
+GST_VERSION=${GST_VERSION:-$(gst-launch-1.0 --version | grep version | tr -s ' ' '\n' | tail -1)}
 
 # Ensure pygst to be installed in current environment
 LIBPYTHON=$($PYTHON -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LDLIBRARY"))')
 LIBPYTHONPATH=$(dirname $(ldconfig -p | grep -w $LIBPYTHON | head -1 | tr ' ' '\n' | grep /))
-GST_VERSION=$(gst-launch-1.0 --version | grep version | tr -s ' ' '\n' | tail -1)
 
 PYTHON_LIB=$(dirname $(dirname $(which python)))
 
