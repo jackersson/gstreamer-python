@@ -23,7 +23,6 @@ import time
 import queue
 import logging
 import threading
-import signal
 import typing as typ
 from enum import Enum
 from functools import partial
@@ -65,6 +64,8 @@ class VideoType(NamedEnum):
 
 class GstContext:
     def __init__(self):
+        # SIGINT handle issue:
+        # https://github.com/beetbox/audioread/issues/63#issuecomment-390394735
         self._main_loop = GLib.MainLoop.new(None, False)
 
         self._main_loop_thread = threading.Thread(target=self._main_loop_run)
