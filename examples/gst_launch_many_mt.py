@@ -7,7 +7,7 @@ import threading
 
 from gstreamer import GstPipeline, GstContext
 
-DEFAULT_PIPELINE = "videotestsrc num-buffers=100 ! gtksink"
+DEFAULT_PIPELINE = "videotestsrc num-buffers=100 ! fakesink"
 
 
 def launch(stop_event: threading.Event):
