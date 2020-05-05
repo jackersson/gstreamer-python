@@ -23,6 +23,7 @@ import time
 import queue
 import logging
 import threading
+import signal
 import typing as typ
 from enum import Enum
 from functools import partial
@@ -64,7 +65,8 @@ class VideoType(NamedEnum):
 
 class GstContext:
     def __init__(self):
-        self._main_loop = GLib.MainLoop()
+        self._main_loop = GLib.MainLoop.new(None, False)
+
         self._main_loop_thread = threading.Thread(target=self._main_loop_run)
 
         self._log = logging.getLogger("pygst.{}".format(self.__class__.__name__))
@@ -244,16 +246,12 @@ class GstPipeline:
 
         self.log.debug("%s Reseting pipeline state ....", self)
         try:
-
-            def clean(self):
-                self._pipeline.set_state(Gst.State.NULL)
-                self._pipeline = None
-
-            thread = threading.Thread(target=clean, args=(self,))
-            thread.start()
-            thread.join(timeout=timeout)
+            self._pipeline.set_state(Gst.State.NULL)
+            self._pipeline = None
         except Exception:
             pass
+
+        self.log.debug("%s Gst.Pipeline successfully destroyed", self)
 
     def shutdown(self, timeout: int = 1, eos: bool = False) -> None:
         """Shutdown pipeline
