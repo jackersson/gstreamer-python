@@ -591,23 +591,12 @@ class GstVideoSource(GstPipeline):
             self.log.warning("%s No data in Gst.Buffer", self)
             return None
 
-        caps_ = caps.get_structure(0)
-
         memory = buffer.get_memory(0)
         if not memory:
             self.log.warning("%s No Gst.Memory in Gst.Buffer", self)
             return None
 
-        video_format = GstVideo.VideoFormat.from_string(caps_.get_value("format"))
-
-        w, h = caps_.get_value("width"), caps_.get_value("height")
-        c = get_num_channels(video_format)
-        dtype = get_np_dtype(video_format)
-
-        # Copy buffer into np.ndarray
-        array = np.ndarray(
-            (h, w, c), dtype=dtype, buffer=buffer.extract_dup(0, buffer.get_size())
-        )
+        array = gst_buffer_with_caps_to_ndarray(buffer, caps)
 
         return GstBuffer(
             data=array,

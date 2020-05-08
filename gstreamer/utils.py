@@ -11,29 +11,57 @@ from gi.repository import Gst, GstVideo  # noqa:F401,F402
 from .gst_hacks import map_gst_buffer  # noqa:F401,F402
 
 
-_CHANNELS = {
-    GstVideo.VideoFormat.RGB: 3,
-    GstVideo.VideoFormat.RGBA: 4,
-    GstVideo.VideoFormat.RGBX: 4,
-    GstVideo.VideoFormat.BGR: 3,
-    GstVideo.VideoFormat.BGRA: 4,
-    GstVideo.VideoFormat.BGRX: 4,
-    GstVideo.VideoFormat.GRAY8: 1,
-    GstVideo.VideoFormat.GRAY16_BE: 1
-}
+BITS_PER_BYTE = 8
+
+_ALL_VIDEO_FORMATS = [GstVideo.VideoFormat.from_string(
+    f.strip()) for f in GstVideo.VIDEO_FORMATS_ALL.strip('{ }').split(',')]
 
 
-def get_num_channels(fmt: GstVideo.VideoFormat) -> int:
-    return _CHANNELS[fmt]
+def is_kbit_set(value: int, k: int) -> bool:
+    return bool(value & (1 << (k - 1)))
+
+
+BIT_POS = {2**i: i + 1 for i in range(0, 16)}
+
+
+def has_flag(value: GstVideo.VideoFormatFlags,
+             flag: GstVideo.VideoFormatFlags) -> bool:
+
+    return is_kbit_set(value, BIT_POS[int(flag)])
+
+
+def _get_num_channels(fmt: GstVideo.VideoFormat) -> int:
+    """
+        -1: means complex format (YUV, ...)
+    """
+    frmt_info = GstVideo.VideoFormat.get_info(fmt)
+    if has_flag(frmt_info.flags, GstVideo.VideoFormatFlags.ALPHA):
+        return 4
+
+    if has_flag(frmt_info.flags, GstVideo.VideoFormatFlags.RGB):
+        return 3
+
+    if has_flag(frmt_info.flags, GstVideo.VideoFormatFlags.GRAY):
+        return 1
+
+    return -1
+
+
+_ALL_VIDEO_FORMAT_CHANNELS = {fmt: _get_num_channels(fmt) for fmt in _ALL_VIDEO_FORMATS}
+
+
+def get_num_channels(fmt: GstVideo.VideoFormat):
+    return _ALL_VIDEO_FORMAT_CHANNELS[fmt]
 
 
 _DTYPES = {
-    GstVideo.VideoFormat.GRAY16_BE: np.float16
+    16: np.int16,
 }
 
 
 def get_np_dtype(fmt: GstVideo.VideoFormat) -> np.number:
-    return _DTYPES.get(fmt, np.uint8)
+    format_info = GstVideo.VideoFormat.get_info(fmt)
+    return _DTYPES.get(format_info.bits, np.uint8)
 
 
 def fraction_to_str(fraction: Fraction) -> str:
@@ -53,10 +81,15 @@ def gst_video_format_from_string(frmt: str) -> GstVideo.VideoFormat:
     return GstVideo.VideoFormat.from_string(frmt)
 
 
-def gst_buffer_to_ndarray(buffer: Gst.Buffer, *, width: int, height: int, channels: int, dtype: np.dtype) -> np.ndarray:
+def gst_buffer_to_ndarray(buffer: Gst.Buffer, *, width: int, height: int, channels: int,
+                          dtype: np.dtype, bpp: int = 1) -> np.ndarray:
     """Converts Gst.Buffer with known format (w, h, c, dtype) to np.ndarray"""
     with map_gst_buffer(buffer, Gst.MapFlags.READ) as mapped:
-        return np.ndarray((height, width, channels), buffer=mapped, dtype=dtype)
+        result = np.ndarray(buffer.get_size() // (bpp // BITS_PER_BYTE),
+                            buffer=mapped, dtype=dtype)
+        if channels > 0:
+            result = result.reshape(height, width, channels).squeeze()
+        return result
 
 
 def gst_buffer_with_pad_to_ndarray(buffer: Gst.Buffer, pad: Gst.Pad) -> np.ndarray:
@@ -75,9 +108,13 @@ def gst_buffer_with_caps_to_ndarray(buffer: Gst.Buffer, caps: Gst.Caps) -> np.nd
     video_format = gst_video_format_from_string(structure.get_value('format'))
 
     channels = get_num_channels(video_format)
+
     dtype = get_np_dtype(video_format)  # np.dtype
 
-    return gst_buffer_to_ndarray(buffer, width=width, height=height, channels=channels, dtype=dtype)
+    format_info = GstVideo.VideoFormat.get_info(video_format)  # GstVideo.VideoFormatInfo
+
+    return gst_buffer_to_ndarray(buffer, width=width, height=height, channels=channels,
+                                 dtype=dtype, bpp=format_info.bits)
 
 
 def get_buffer_size_from_gst_caps(caps: Gst.Caps) -> typ.Tuple[int, int]:

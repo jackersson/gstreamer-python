@@ -183,3 +183,17 @@ def test_gst_buffer_to_ndarray():
     res_npndarray = utils.gst_buffer_with_caps_to_ndarray(gst_buffer, caps)
 
     assert (npndarray == res_npndarray).all()
+
+
+def test_gst_buffer_channels():
+
+    assert bool(8 & (1 << (4 - 1)))
+    assert utils.is_kbit_set(2, 2)
+    assert utils.is_kbit_set(8, 4)
+    assert utils.is_kbit_set(8 | 1, 1)
+
+    assert utils.get_num_channels(GstVideo.VideoFormat.RGB) == 3
+    assert utils.get_num_channels(GstVideo.VideoFormat.RGBA) == 4
+    assert utils.get_num_channels(GstVideo.VideoFormat.GRAY8) == 1
+    assert utils.get_num_channels(GstVideo.VideoFormat.I420) == -1
+
