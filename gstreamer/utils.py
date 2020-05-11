@@ -1,3 +1,4 @@
+import math
 import typing as typ
 from fractions import Fraction
 
@@ -17,17 +18,11 @@ _ALL_VIDEO_FORMATS = [GstVideo.VideoFormat.from_string(
     f.strip()) for f in GstVideo.VIDEO_FORMATS_ALL.strip('{ }').split(',')]
 
 
-def is_kbit_set(value: int, k: int) -> bool:
-    return bool(value & (1 << (k - 1)))
-
-
-BIT_POS = {2**i: i + 1 for i in range(0, 16)}
-
-
 def has_flag(value: GstVideo.VideoFormatFlags,
              flag: GstVideo.VideoFormatFlags) -> bool:
 
-    return is_kbit_set(value, BIT_POS[int(flag)])
+    # in VideoFormatFlags each new value is 1 << 2**{0...8}
+    return bool(value & (1 << max(1, math.ceil(math.log2(int(flag))))))
 
 
 def _get_num_channels(fmt: GstVideo.VideoFormat) -> int:
