@@ -126,3 +126,27 @@ with GstVideoSink(command, width=width, height=height) as pipeline:
        class_name
        track_id
 
+
+### Examples
+#### Run Gstreamer pipeline in Python using Gst.ElementFactory
+```bash
+python examples/pipeline_with_factory.py
+```
+
+#### Run Gstreamer pipeline in Python using Gst.parse_launch
+```bash
+python examples/pipeline_with_parse_launch.py -p "videotestsrc num-buffers=100 pattern=1 ! autovideosink"
+```
+
+#### Capture frames (np.ndarray) from any Gstreamer pipeline
+```bash
+PYTHONPATH=. python examples/run_appsink.py -p "videotestsrc num-buffers=100 ! capsfilter caps=video/x-raw,format=RGB,width=640,height=480 ! appsink emit-signals=True"
+```
+
+#### Push images (np.ndarray) to any Gstreamer pipeline
+```bash
+PYTHONPATH=. python examples/run_appsrc.py -p "appsrc emit-signals=True is-live=True caps=video/x-raw,format=RGB,width=640,height=480 ! queue ! videoconvert ! autovideosink"  -n 1000
+```
+
+
+

@@ -45,13 +45,12 @@ def extract_buffer(sample: Gst.Sample) -> np.ndarray:
     c = utils.get_num_channels(video_format)
 
     buffer_size = buffer.get_size()
-    shape = (h, w, c) if (h * w * c == buffer_size) else buffer_size
-
     format_info = GstVideo.VideoFormat.get_info(video_format)  # GstVideo.VideoFormatInfo
-    array = np.ndarray(shape=shape // (format_info.bits // utils.BITS_PER_BYTE),
+    array = np.ndarray(shape=buffer_size // (format_info.bits // utils.BITS_PER_BYTE),
                        buffer=buffer.extract_dup(0, buffer_size),
                        dtype=utils.get_np_dtype(video_format))
-
+    if c > 0:
+        array = array.reshape(h, w, c).squeeze()
     return np.squeeze(array)  # remove single dimension if exists
 
 
