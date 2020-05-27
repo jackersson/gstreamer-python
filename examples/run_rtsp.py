@@ -263,12 +263,12 @@ class GstServer():
         #     "appsink emit-signals=True"
         # ]
 
-        # Buffers streaming from pipeline
+        # Buffers streaming from pipeline (Gst)
         generator = functools.partial(
             GstBufferGeneratorFromPipeline, gst_launch=pipeline, loop=True
         )
 
-        # Fake buffers streaming from generator
+        # Fake buffers streaming from generator (numpy)
         # generator = functools.partial(FakeGstBufferGenerator, width=WIDTH, height=HEIGHT,
         #                               fps=FPS, video_frmt=GST_VIDEO_FORMAT)
 
