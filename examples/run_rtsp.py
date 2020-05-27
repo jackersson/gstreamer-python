@@ -20,6 +20,7 @@ gi.require_version('GstVideo', '1.0')
 from gi.repository import Gst, GLib, GstRtspServer, GObject, GstApp, GstVideo  # noqa:F401,F402
 
 import gstreamer as gst  # noqa:F401,F402
+import gstreamer.utils as utils  # noqa:F401,F402
 
 # Examples
 # https://github.com/tamaggo/gstreamer-examples
@@ -28,7 +29,9 @@ import gstreamer as gst  # noqa:F401,F402
 
 
 VIDEO_FORMAT = "RGB"
-WIDTH, HEIGHT = 640, 480
+# VIDEO_FORMAT = "I420"
+
+WIDTH, HEIGHT = 320, 240
 FPS = Fraction(30)
 GST_VIDEO_FORMAT = GstVideo.VideoFormat.from_string(VIDEO_FORMAT)
 
@@ -168,16 +171,19 @@ class RTSPMediaFactoryCustom(GstRtspServer.RTSPMediaFactory):
         self._source = source
         self._sources = {}
 
-    def do_create_element(self, url) -> Gst.Element:
-        # https://lazka.github.io/pgi-docs/GstRtspServer-1.0/classes/RTSPMediaFactory.html#GstRtspServer.RTSPMediaFactory.do_create_element
+    # def do_create_element(self, url) -> Gst.Element:
+    #     # https://lazka.github.io/pgi-docs/GstRtspServer-1.0/classes/RTSPMediaFactory.html#GstRtspServer.RTSPMediaFactory.do_create_element
 
-        src = "appsrc emit-signals=True is-live=True"
-        encoder = "x264enc tune=zerolatency"  # pass=quant
-        color_convert = "videoconvert n-threads=0 ! video/x-raw,format=I420"
-        rtp = "rtph264pay config-interval=1 name=pay0 pt=96"
-        pipeline = "{src} ! {color_convert} ! {encoder} ! queue max-size-buffers=8 ! {rtp}".format(**locals())
-        print(f"gst-launch-1.0 {pipeline}")
-        return Gst.parse_launch(pipeline)
+    #     src = "appsrc emit-signals=True is-live=True"
+    #     encoder = "x264enc tune=zerolatency"  # pass=quant
+    #     color_convert = "videoconvert n-threads=0 ! video/x-raw,format=I420"
+    #     # rtp = "rtph264pay config-interval=1 name=pay0 pt=96"
+    #     rtp = "rtpvrawpay name=pay0 pt=96"
+    #     pipeline = "{src} ! {color_convert} ! {encoder} ! queue max-size-buffers=8 ! {rtp}".format(**locals())
+    #     pipeline = "{src} ! queue max-size-buffers=8 ! {rtp}".format(**locals())
+
+    #     print(f"gst-launch-1.0 {pipeline}")
+    #     return Gst.parse_launch(pipeline)
 
     def on_need_data(self, src: GstApp.AppSrc, length: int):
         """ Callback on "need-data" signal
@@ -200,7 +206,11 @@ class RTSPMediaFactoryCustom(GstRtspServer.RTSPMediaFactory):
     def do_configure(self, rtsp_media: GstRtspServer.RTSPMedia):
         # https://lazka.github.io/pgi-docs/GstRtspServer-1.0/classes/RTSPMedia.html#GstRtspServer.RTSPMedia
 
-        appsrc = get_child_by_cls(rtsp_media.get_element(), GstApp.AppSrc)[0]
+        appsrcs = get_child_by_cls(rtsp_media.get_element(), GstApp.AppSrc)
+        if not appsrcs:
+            return
+
+        appsrc = appsrcs[0]
 
         self._sources[appsrc.name] = self._source()
         self._sources[appsrc.name].startup()
@@ -234,22 +244,56 @@ class GstServer():
         # https://lazka.github.io/pgi-docs/GstRtspServer-1.0/classes/RTSPMountPoints.html#GstRtspServer.RTSPMountPoints
         m = self.server.get_mount_points()
 
-        generator = functools.partial(FakeGstBufferGenerator, width=WIDTH, height=HEIGHT,
-                                      fps=FPS, video_frmt=GST_VIDEO_FORMAT)
-
         # pipeline
-        # pipeline = "videotestsrc num-buffers=1000 ! capsfilter caps=video/x-raw,format=RGB,width=640,height=480 ! appsink emit-signals=True"
+        # Launch test buffers streaming
+        pipeline = utils.to_gst_string([
+            "videotestsrc num-buffers=1000",
+            "video/x-raw,format={fmt},width={width},height={height}".format(fmt=VIDEO_FORMAT,
+                                                                            width=WIDTH,
+                                                                            height=HEIGHT),
+            "appsink emit-signals=True"
+        ])
 
-        # path = "/home/taras/coder/datai/production/sales_zone/data/videos/letoile/sales_zone_letoile.mp4"
-        # pipeline = f"filesrc location={path} ! decodebin ! videoconvert n-threads=0 ! video/x-raw,format=RGB ! appsink emit-signals=True"
+        # Launch file streaming
+        # pipeline = [
+        #     "filesrc location=video.mp4",
+        #     "decodebin"
+        #     "videoconvert n-threads=0",
+        #     "video/x-raw,format=RGB",
+        #     "appsink emit-signals=True"
+        # ]
 
-        # generator = functools.partial(
-        #     GstBufferGeneratorFromPipeline, gst_launch=pipeline, loop=True
-        # )
+        # Buffers streaming from pipeline
+        generator = functools.partial(
+            GstBufferGeneratorFromPipeline, gst_launch=pipeline, loop=True
+        )
+
+        # Fake buffers streaming from generator
+        # generator = functools.partial(FakeGstBufferGenerator, width=WIDTH, height=HEIGHT,
+        #                               fps=FPS, video_frmt=GST_VIDEO_FORMAT)
 
         # https://lazka.github.io/pgi-docs/GstRtspServer-1.0/classes/RTSPMountPoints.html#GstRtspServer.RTSPMountPoints.add_factory
         mount_point = "/stream.rtp"
         factory = RTSPMediaFactoryCustom(generator)
+
+        # Launch Raw Stream
+        pipeline = [
+            "appsrc emit-signals=True is-live=True",
+            "queue max-size-buffers=8",
+            "rtpvrawpay name=pay0 pt=96"
+        ]
+
+        # Launch H264 Stream
+        # pipeline = [
+        #     "appsrc emit-signals=True is-live=True",
+        #     "queue max-size-buffers=8",
+        #     "videoconvert n-threads=0 ! video/x-raw,format=I420",
+        #     "264enc tune=zerolatency",  # pass quant
+        #     "queue max-size-buffers=8",
+        #     "rtph264pay config-interval=1 name=pay0 pt=96"
+        # ]
+
+        factory.set_launch(utils.to_gst_string(pipeline))
         factory.set_shared(shared)
         m.add_factory(mount_point, factory)  # adding streams
 
