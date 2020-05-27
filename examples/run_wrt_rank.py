@@ -10,9 +10,6 @@ Examples:
 import time
 import argparse
 
-from iteration_utilities import intersperse
-from iteration_utilities import flatten
-
 from gstreamer import Gst, GstContext, GstPipeline, GObject
 import gstreamer.utils as utils
 
