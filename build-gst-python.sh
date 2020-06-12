@@ -10,11 +10,11 @@ GST_VERSION=${GST_VERSION:-$(gst-launch-1.0 --version | grep version | tr -s ' '
 LIBPYTHON=$($PYTHON -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LDLIBRARY"))')
 LIBPYTHONPATH=$(dirname $(ldconfig -p | grep -w $LIBPYTHON | head -1 | tr ' ' '\n' | grep /))
 
-PYTHON_LIB=$(dirname $(dirname $(which python)))
+GST_PREFIX=${GST_PREFIX:-$(dirname $(dirname $(which python)))} 
 
 echo "Python Executable: $PYTHON"
 echo "Python Library Path: $LIBPYTHONPATH"
-echo "Current Python Path $PYTHON_LIB"
+echo "Current Python Path $GST_PREFIX"
 echo "Gstreamer Version: $GST_VERSION"
 
 TEMP_DIR="temp"
@@ -29,7 +29,7 @@ export PYTHON=$PYTHON
 git checkout $GST_VERSION
 
 ./autogen.sh --disable-gtk-doc --noconfigure
-./configure --with-libpython-dir=$LIBPYTHONPATH --prefix $PYTHON_LIB
+./configure --with-libpython-dir=$LIBPYTHONPATH --prefix $GST_PREFIX
 make
 make install
 
