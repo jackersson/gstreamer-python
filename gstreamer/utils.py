@@ -77,22 +77,28 @@ def gst_video_format_from_string(frmt: str) -> GstVideo.VideoFormat:
 
 
 def gst_buffer_to_ndarray(buffer: Gst.Buffer, *, width: int, height: int, channels: int,
-                          dtype: np.dtype, bpp: int = 1) -> np.ndarray:
+                          dtype: np.dtype, bpp: int = 1, do_copy: bool = False) -> np.ndarray:
     """Converts Gst.Buffer with known format (w, h, c, dtype) to np.ndarray"""
-    with map_gst_buffer(buffer, Gst.MapFlags.READ) as mapped:
+
+    result = None
+    if do_copy:
         result = np.ndarray(buffer.get_size() // (bpp // BITS_PER_BYTE),
-                            buffer=mapped, dtype=dtype)
-        if channels > 0:
-            result = result.reshape(height, width, channels).squeeze()
-        return result
+                            buffer=buffer.extract_dup(0, buffer.get_size()), dtype=dtype)
+    else:
+        with map_gst_buffer(buffer, Gst.MapFlags.READ) as mapped:
+            result = np.ndarray(buffer.get_size() // (bpp // BITS_PER_BYTE),
+                                buffer=mapped, dtype=dtype)
+    if channels > 0:
+        result = result.reshape(height, width, channels).squeeze()
+    return result
 
 
-def gst_buffer_with_pad_to_ndarray(buffer: Gst.Buffer, pad: Gst.Pad) -> np.ndarray:
+def gst_buffer_with_pad_to_ndarray(buffer: Gst.Buffer, pad: Gst.Pad, do_copy: bool = False) -> np.ndarray:
     """Converts Gst.Buffer with Gst.Pad (stores Gst.Caps) to np.ndarray """
-    return gst_buffer_with_caps_to_ndarray(buffer, pad.get_current_caps())
+    return gst_buffer_with_caps_to_ndarray(buffer, pad.get_current_caps(), do_copy=do_copy)
 
 
-def gst_buffer_with_caps_to_ndarray(buffer: Gst.Buffer, caps: Gst.Caps) -> np.ndarray:
+def gst_buffer_with_caps_to_ndarray(buffer: Gst.Buffer, caps: Gst.Caps, do_copy: bool = False) -> np.ndarray:
     """ Converts Gst.Buffer with Gst.Caps (stores buffer info) to np.ndarray """
 
     structure = caps.get_structure(0)  # Gst.Structure
@@ -109,7 +115,7 @@ def gst_buffer_with_caps_to_ndarray(buffer: Gst.Buffer, caps: Gst.Caps) -> np.nd
     format_info = GstVideo.VideoFormat.get_info(video_format)  # GstVideo.VideoFormatInfo
 
     return gst_buffer_to_ndarray(buffer, width=width, height=height, channels=channels,
-                                 dtype=dtype, bpp=format_info.bits)
+                                 dtype=dtype, bpp=format_info.bits, do_copy=do_copy)
 
 
 def get_buffer_size_from_gst_caps(caps: Gst.Caps) -> typ.Tuple[int, int]:

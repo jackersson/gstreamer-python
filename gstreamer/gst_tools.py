@@ -596,7 +596,7 @@ class GstVideoSource(GstPipeline):
             self.log.warning("%s No Gst.Memory in Gst.Buffer", self)
             return None
 
-        array = gst_buffer_with_caps_to_ndarray(buffer, caps)
+        array = gst_buffer_with_caps_to_ndarray(buffer, caps, do_copy=True)
 
         return GstBuffer(
             data=array,
