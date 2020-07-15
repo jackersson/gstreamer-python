@@ -30,6 +30,11 @@ def _get_num_channels(fmt: GstVideo.VideoFormat) -> int:
         -1: means complex format (YUV, ...)
     """
     frmt_info = GstVideo.VideoFormat.get_info(fmt)
+    
+    # temporal fix
+    if fmt == GstVideo.VideoFormat.BGRX:
+        return 4
+    
     if has_flag(frmt_info.flags, GstVideo.VideoFormatFlags.ALPHA):
         return 4
 
