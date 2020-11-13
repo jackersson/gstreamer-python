@@ -25,3 +25,5 @@ message("CMAKE_EXE_LINKER_FLAGS: ${CMAKE_EXE_LINKER_FLAGS}")
 set_target_properties(gst_objects_info_meta
                       PROPERTIES COMPILE_FLAGS ${CMAKE_C_FLAGS}
                                  LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS})
+
+install(TARGETS gst_objects_info_meta DESTINATION lib)
