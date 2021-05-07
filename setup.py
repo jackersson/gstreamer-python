@@ -42,8 +42,8 @@ class build_py(_build_py):
                 print("Not found ", bash_file)
 
         cwd = os.path.dirname(os.path.abspath(__file__))
-        #if not bool(self.skip_gst_python):
-        #    _run_bash_file(os.path.join(cwd, 'build-gst-python.sh'))
+        if not bool(self.skip_gst_python):
+           _run_bash_file(os.path.join(cwd, 'build-gst-python.sh'))
         _run_bash_file(os.path.join(cwd, 'build-3rd-party.sh'))
 
         _build_py.run(self)
