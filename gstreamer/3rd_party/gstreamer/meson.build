@@ -29,5 +29,5 @@ gst_objects_info_meta = library('gst_objects_info_meta',
   c_args: plugin_c_args,
   dependencies : [gst_dep],
   install : true,
-  install_dir : join_paths(get_option('libdir'), 'gstreamer-1.0'),
+  install_dir : plugins_install_dir,
 )
