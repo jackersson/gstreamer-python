@@ -4,7 +4,7 @@
 
 LIBPYTHONPATH=""
 PYTHON=${PYTHON:-/usr/bin/python3}
-GST_VERSION=${GST_VERSION:-$(gst-launch-1.0 --version | grep version | tr -s ' ' '\n' | tail -1)}
+GST_VERSION=${GST_VERSION:-$(gst-launch-1.0 --version | grep version | tr -s ' ' '\n' | tail -1 | $PYTHON -c "import sys; print('.'.join(next(sys.stdin).strip().split('.')[:2]))")}
 
 # Ensure pygst to be installed in current environment
 LIBPYTHON=$($PYTHON -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LDLIBRARY"))')
@@ -28,10 +28,13 @@ cd gst-python
 export PYTHON=$PYTHON
 git checkout $GST_VERSION
 
-./autogen.sh --disable-gtk-doc --noconfigure
-./configure --with-libpython-dir=$LIBPYTHONPATH --prefix $GST_PREFIX
-make
-make install
+#./autogen.sh --disable-gtk-doc --noconfigure
+#./configure --with-libpython-dir=$LIBPYTHONPATH --prefix $GST_PREFIX
+#make
+#make install
+meson --prefix=$GST_PREFIX --libdir=$GST_PREFIX/lib -Dpython=$PYTHON -Dlibpython-dir=$LIBPYTHONPATH -Dbuildtype=release build
+#ninja -C build
+ninja -C build install
 
 cd ../..
 
