@@ -37,7 +37,7 @@ class build_py(_build_py):
             if os.path.isfile(bash_file):
                 print("Running ... ", bash_file)
                 _ = subprocess.run(bash_file, shell=True,
-                                   executable="/bin/bash")
+                                   executable="bash")
             else:
                 print("Not found ", bash_file)
 
