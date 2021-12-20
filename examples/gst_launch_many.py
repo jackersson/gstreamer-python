@@ -7,7 +7,7 @@ from gstreamer import GstPipeline, GstContext
 if __name__ == '__main__':
     with GstContext():
         pipelines = [GstPipeline(
-            f"videotestsrc num-buffers={randint(50, 300)} ! gtksink") for _ in range(5)]
+            "videotestsrc num-buffers={} ! gtksink".format(randint(50, 300))) for _ in range(5)]
 
         for p in pipelines:
             p.startup()

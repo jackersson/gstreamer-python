@@ -1,3 +1,10 @@
+## gstreamer-python
+### Purpose
+- abstraction over [PyGOBJECT API](https://lazka.github.io/pgi-docs/) for Gstreamer
+- work with Gstreamer metadata 
+- common tools for Gstreamer pipeline management
+- easy [gst-python](https://github.com/GStreamer/gst-python) installation
+
 ### Install
 #### Install OS packages
 - [How to install Gstreamer on Ubuntu](http://lifestyletransfer.com/how-to-install-gstreamer-on-ubuntu/)

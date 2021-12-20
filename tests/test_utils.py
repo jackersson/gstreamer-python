@@ -170,7 +170,7 @@ def test_metadata():
 def test_gst_buffer_to_ndarray():
 
     caps = Gst.Caps.from_string(
-        f"video/x-raw,format={FORMAT},width={WIDTH},height={HEIGHT}")
+        "video/x-raw,format={},width={},height={}".format(FORMAT, WIDTH, HEIGHT))
 
     video_format = utils.gst_video_format_from_string(FORMAT)
     channels = utils.get_num_channels(video_format)

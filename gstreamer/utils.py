@@ -13,6 +13,7 @@ from .gst_hacks import map_gst_buffer  # noqa:F401,F402
 
 _CHANNELS = {
     GstVideo.VideoFormat.RGB: 3,
+    GstVideo.VideoFormat.I420: 3,
     GstVideo.VideoFormat.RGBA: 4,
     GstVideo.VideoFormat.RGBX: 4,
     GstVideo.VideoFormat.BGR: 3,
@@ -111,4 +112,4 @@ def to_gst_string(plugins: typ.List[str]) -> str:
     plugins_ = flatten_list(plugins)
 
     # <!> between plugins (except tee)
-    return plugins_[0] + "".join([f"{'' if pl[-1] == '.' else ' !'} {pl}" for pl in plugins_[1:]])
+    return plugins_[0] + "".join(["{} {}".format('' if pl[-1] == '.' else ' !', pl) for pl in plugins_[1:]])

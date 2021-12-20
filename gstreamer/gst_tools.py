@@ -32,18 +32,18 @@ import attr
 import numpy as np
 
 import gi
-gi.require_version('Gst', '1.0')
-gi.require_version('GstApp', '1.0')
-gi.require_version('GstVideo', '1.0')
+
+gi.require_version("Gst", "1.0")
+gi.require_version("GstApp", "1.0")
+gi.require_version("GstVideo", "1.0")
 from gi.repository import Gst, GLib, GObject, GstApp, GstVideo  # noqa:F401,F402
 
 from .utils import *  # noqa:F401,F402
 
-Gst.init(sys.argv if hasattr(sys, 'argv') else None)
+Gst.init(sys.argv if hasattr(sys, "argv") else None)
 
 
 class NamedEnum(Enum):
-
     def __repr__(self):
         return str(self)
 
@@ -56,25 +56,24 @@ class VideoType(NamedEnum):
     """
     https://gstreamer.freedesktop.org/documentation/plugin-development/advanced/media-types.html?gi-language=c
     """
-    VIDEO_RAW = 'video/x-raw'
+
+    VIDEO_RAW = "video/x-raw"
     VIDEO_GL_RAW = "video/x-raw(memory:GLMemory)"
     VIDEO_NVVM_RAW = "video/x-raw(memory:NVMM)"
 
 
 class GstContext:
-
     def __init__(self):
         self._main_loop = GLib.MainLoop()
         self._main_loop_thread = threading.Thread(target=self._main_loop_run)
 
-        self._log = logging.getLogger(
-            'pygst.{}'.format(self.__class__.__name__))
+        self._log = logging.getLogger("pygst.{}".format(self.__class__.__name__))
 
     def __str__(self) -> str:
         return self.__class__.__name__
 
     def __repr__(self) -> str:
-        return '<{}>'.format(self)
+        return "<{}>".format(self)
 
     def __enter__(self):
         self.startup()
@@ -122,11 +121,10 @@ class GstPipeline:
         :param command: gst-launch string
         """
         self._command = command
-        self._pipeline = None        # Gst.Pipeline
-        self._bus = None             # Gst.Bus
+        self._pipeline = None  # Gst.Pipeline
+        self._bus = None  # Gst.Bus
 
-        self._log = logging.getLogger(
-            'pygst.{}'.format(self.__class__.__name__))
+        self._log = logging.getLogger("pygst.{}".format(self.__class__.__name__))
         self._log.info("%s \n gst-launch-1.0 %s", self, command)
 
         self._end_stream_event = threading.Event()
@@ -139,7 +137,7 @@ class GstPipeline:
         return self.__class__.__name__
 
     def __repr__(self) -> str:
-        return '<{}>'.format(self)
+        return "<{}>".format(self)
 
     def __enter__(self):
         self.startup()
@@ -150,7 +148,20 @@ class GstPipeline:
 
     def get_by_cls(self, cls: GObject.GType) -> typ.List[Gst.Element]:
         """ Get Gst.Element[] from pipeline by GType """
-        return [e for e in self._pipeline.iterate_elements() if isinstance(e, cls)]
+        elements = self._pipeline.iterate_elements()
+        if isinstance(elements, Gst.Iterator):
+            # Patch "TypeError: ‘Iterator’ object is not iterable."
+            # For versions we have to get a python iterable object from Gst iterator
+            _elements = []
+            while True:
+                ret, el = elements.next()
+                if ret == Gst.IteratorResult(1):  # GST_ITERATOR_OK
+                    _elements.append(el)
+                else:
+                    break
+            elements = _elements
+
+        return [e for e in elements if isinstance(e, cls)]
 
     def get_by_name(self, name: str) -> Gst.Element:
         """Get Gst.Element from pipeline by name
@@ -176,15 +187,19 @@ class GstPipeline:
         self._on_pipeline_init()
         self._pipeline.set_state(Gst.State.READY)
 
-        self.log.info('Starting %s', self)
+        self.log.info("Starting %s", self)
 
         self._end_stream_event.clear()
 
-        self.log.debug("%s Setting pipeline state to %s ... ",
-                       self, gst_state_to_str(Gst.State.PLAYING))
+        self.log.debug(
+            "%s Setting pipeline state to %s ... ",
+            self,
+            gst_state_to_str(Gst.State.PLAYING),
+        )
         self._pipeline.set_state(Gst.State.PLAYING)
-        self.log.debug("%s Pipeline state set to %s ", self,
-                       gst_state_to_str(Gst.State.PLAYING))
+        self.log.debug(
+            "%s Pipeline state set to %s ", self, gst_state_to_str(Gst.State.PLAYING)
+        )
 
     def _on_pipeline_init(self) -> None:
         """Sets additional properties for plugins in Pipeline"""
@@ -220,7 +235,8 @@ class GstPipeline:
             self.log.debug("%s Sending EOS event ...", self)
             try:
                 thread = threading.Thread(
-                    target=self._pipeline.send_event, args=(Gst.Event.new_eos(),))
+                    target=self._pipeline.send_event, args=(Gst.Event.new_eos(),)
+                )
                 thread.start()
                 thread.join(timeout=timeout)
             except Exception:
@@ -228,9 +244,11 @@ class GstPipeline:
 
         self.log.debug("%s Reseting pipeline state ....", self)
         try:
+
             def clean(self):
                 self._pipeline.set_state(Gst.State.NULL)
                 self._pipeline = None
+
             thread = threading.Thread(target=clean, args=(self,))
             thread.start()
             thread.join(timeout=timeout)
@@ -244,11 +262,11 @@ class GstPipeline:
             - EOS event necessary for FILESINK finishes properly
             - Use when pipeline crushes
         """
-        self.log.info('%s Shutdown requested ...', self)
+        self.log.info("%s Shutdown requested ...", self)
 
         self._shutdown_pipeline(timeout=timeout, eos=eos)
 
-        self.log.info('%s successfully destroyed', self)
+        self.log.info("%s successfully destroyed", self)
 
     @property
     def is_active(self) -> bool:
@@ -272,9 +290,14 @@ class GstPipeline:
         self.log.warning("Gstreamer.%s: %s. %s", self, warn, debug)
 
 
-def gst_video_format_plugin(*, width: int = None, height: int = None, fps: Fraction = None,
-                            video_type: VideoType = VideoType.VIDEO_RAW,
-                            video_frmt: GstVideo.VideoFormat = GstVideo.VideoFormat.RGB) -> typ.Optional[str]:
+def gst_video_format_plugin(
+    *,
+    width: int = None,
+    height: int = None,
+    fps: Fraction = None,
+    video_type: VideoType = VideoType.VIDEO_RAW,
+    video_frmt: GstVideo.VideoFormat = GstVideo.VideoFormat.RGB
+) -> typ.Optional[str]:
     """
         https://gstreamer.freedesktop.org/data/doc/gstreamer/head/gstreamer-plugins/html/gstreamer-plugins-capsfilter.html
         Returns capsfilter
@@ -295,14 +318,13 @@ def gst_video_format_plugin(*, width: int = None, height: int = None, fps: Fract
     plugin = str(video_type.value)
     n = len(plugin)
     if video_frmt:
-        plugin += ',format={}'.format(
-            GstVideo.VideoFormat.to_string(video_frmt))
+        plugin += ",format={}".format(GstVideo.VideoFormat.to_string(video_frmt))
     if width and width > 0:
-        plugin += ',width={}'.format(width)
+        plugin += ",width={}".format(width)
     if height and height > 0:
-        plugin += ',height={}'.format(height)
+        plugin += ",height={}".format(height)
     if fps and fps > 0:
-        plugin += ',framerate={}'.format(fraction_to_str(fps))
+        plugin += ",framerate={}".format(fraction_to_str(fps))
 
     if n == len(plugin):
         return None
@@ -322,10 +344,16 @@ class GstVideoSink(GstPipeline):
         >>>
     """
 
-    def __init__(self, command: str, *, width: int, height: int,
-                 fps: typ.Union[Fraction, int] = Fraction('30/1'),
-                 video_type: VideoType = VideoType.VIDEO_RAW,
-                 video_frmt: GstVideo.VideoFormat = GstVideo.VideoFormat.RGB):
+    def __init__(
+        self,
+        command: str,
+        *,
+        width: int,
+        height: int,
+        fps: typ.Union[Fraction, int] = Fraction("30/1"),
+        video_type: VideoType = VideoType.VIDEO_RAW,
+        video_frmt: GstVideo.VideoFormat = GstVideo.VideoFormat.RGB
+    ):
 
         super(GstVideoSink, self).__init__(command)
 
@@ -337,9 +365,9 @@ class GstVideoSink(GstPipeline):
 
         self._pts = 0
         self._dts = GLib.MAXUINT64
-        self._duration = 10**9 / (fps.numerator / fps.denominator)
+        self._duration = 10 ** 9 / (fps.numerator / fps.denominator)
 
-        self._src = None    # GstApp.AppSrc
+        self._src = None  # GstApp.AppSrc
 
     @property
     def video_frmt(self):
@@ -357,19 +385,32 @@ class GstVideoSink(GstPipeline):
             # this instructs appsrc that we will be dealing with timed buffer
             self._src.set_property("format", Gst.Format.TIME)
 
+            # instructs appsrc to block pushing buffers until ones in queue are preprocessed
+            # allows to avoid huge queue internal queue size in appsrc
+            self._src.set_property("block", True)
+
             # set src caps
             caps = gst_video_format_plugin(
-                width=self._width, height=self._height,
-                fps=self._fps, video_type=self._video_type, video_frmt=self._video_frmt)
+                width=self._width,
+                height=self._height,
+                fps=self._fps,
+                video_type=self._video_type,
+                video_frmt=self._video_frmt,
+            )
 
             self.log.debug("%s Caps: %s", self, caps)
             if caps is not None:
                 self._src.set_property("caps", Gst.Caps.from_string(caps))
 
     @staticmethod
-    def to_gst_buffer(buffer: typ.Union[Gst.Buffer, np.ndarray], *, pts: typ.Optional[int] = None,
-                      dts: typ.Optional[int] = None,
-                      offset: typ.Optional[int] = None, duration: typ.Optional[int] = None) -> Gst.Buffer:
+    def to_gst_buffer(
+        buffer: typ.Union[Gst.Buffer, np.ndarray],
+        *,
+        pts: typ.Optional[int] = None,
+        dts: typ.Optional[int] = None,
+        offset: typ.Optional[int] = None,
+        duration: typ.Optional[int] = None
+    ) -> Gst.Buffer:
         """Convert buffer to Gst.Buffer. Updates required fields
         Parameters explained:
             https://lazka.github.io/pgi-docs/Gst-1.0/classes/Buffer.html#gst-buffer
@@ -379,8 +420,9 @@ class GstVideoSink(GstPipeline):
             gst_buffer = Gst.Buffer.new_wrapped(bytes(buffer))
 
         if not isinstance(gst_buffer, Gst.Buffer):
-            raise ValueError('Invalid buffer format {} != {}'.format(
-                type(gst_buffer), Gst.Buffer))
+            raise ValueError(
+                "Invalid buffer format {} != {}".format(type(gst_buffer), Gst.Buffer)
+            )
 
         gst_buffer.pts = pts or GLib.MAXUINT64
         gst_buffer.dts = dts or GLib.MAXUINT64
@@ -388,27 +430,33 @@ class GstVideoSink(GstPipeline):
         gst_buffer.duration = duration or GLib.MAXUINT64
         return gst_buffer
 
-    def push(self, buffer: typ.Union[Gst.Buffer, np.ndarray], *,
-             pts: typ.Optional[int] = None, dts: typ.Optional[int] = None,
-             offset: typ.Optional[int] = None) -> None:
+    def push(
+        self,
+        buffer: typ.Union[Gst.Buffer, np.ndarray],
+        *,
+        pts: typ.Optional[int] = None,
+        dts: typ.Optional[int] = None,
+        offset: typ.Optional[int] = None
+    ) -> None:
 
         # FIXME: maybe put in queue first
         if not self.is_active:
-            self.log.warning(
-                "Warning %s: Can't push buffer. Pipeline not active")
+            self.log.warning("Warning %s: Can't push buffer. Pipeline not active")
             return
 
         if not self._src:
-            raise RuntimeError('Src {} is not initialized'.format(Gst.AppSrc))
+            raise RuntimeError("Src {} is not initialized".format(Gst.AppSrc))
 
         self._pts += self._duration
         offset_ = int(self._pts / self._duration)
 
-        gst_buffer = self.to_gst_buffer(buffer,
-                                        pts=pts or self._pts,
-                                        dts=dts or self._dts,
-                                        offset=offset or offset_,
-                                        duration=self._duration)
+        gst_buffer = self.to_gst_buffer(
+            buffer,
+            pts=pts or self._pts,
+            dts=dts or self._dts,
+            offset=offset or offset_,
+            duration=self._duration,
+        )
 
         # Emit 'push-buffer' signal
         # https://lazka.github.io/pgi-docs/GstApp-1.0/classes/AppSrc.html#GstApp.AppSrc.signals.push_buffer
@@ -433,7 +481,11 @@ class GstVideoSink(GstPipeline):
 class LeakyQueue(queue.Queue):
     """Queue that contains only the last actual items and drops the oldest one."""
 
-    def __init__(self, maxsize: int = 100, on_drop: typ.Optional[typ.Callable[['LeakyQueue', "object"], None]] = None):
+    def __init__(
+        self,
+        maxsize: int = 100,
+        on_drop: typ.Optional[typ.Callable[["LeakyQueue", "object"], None]] = None,
+    ):
         super().__init__(maxsize=maxsize)
         self._dropped = 0
         self._on_drop = on_drop or (lambda queue, item: None)
@@ -454,11 +506,11 @@ class LeakyQueue(queue.Queue):
 # https://lazka.github.io/pgi-docs/Gst-1.0/classes/Buffer.html
 @attr.s(slots=True, frozen=True)
 class GstBuffer:
-    data = attr.ib()                                   # type: np.ndarray
-    pts = attr.ib(default=GLib.MAXUINT64)              # type: int
-    dts = attr.ib(default=GLib.MAXUINT64)              # type: int
-    offset = attr.ib(default=GLib.MAXUINT64)           # type: int
-    duration = attr.ib(default=GLib.MAXUINT64)         # type: int
+    data = attr.ib()  # type: np.ndarray
+    pts = attr.ib(default=GLib.MAXUINT64)  # type: int
+    dts = attr.ib(default=GLib.MAXUINT64)  # type: int
+    offset = attr.ib(default=GLib.MAXUINT64)  # type: int
+    duration = attr.ib(default=GLib.MAXUINT64)  # type: int
 
 
 class GstVideoSource(GstPipeline):
@@ -485,11 +537,10 @@ class GstVideoSource(GstPipeline):
         """
         super(GstVideoSource, self).__init__(command)
 
-        self._sink = None    # GstApp.AppSink
-        self._counter = 0    # counts number of received buffers
+        self._sink = None  # GstApp.AppSink
+        self._counter = 0  # counts number of received buffers
 
-        queue_cls = partial(
-            LeakyQueue, on_drop=self._on_drop) if leaky else queue.Queue
+        queue_cls = partial(LeakyQueue, on_drop=self._on_drop) if leaky else queue.Queue
         self._queue = queue_cls(maxsize=max_buffers_size)  # Queue of GstBuffer
 
     @property
@@ -507,8 +558,11 @@ class GstVideoSource(GstPipeline):
 
     def _on_drop(self, queue: LeakyQueue, buffer: GstBuffer) -> None:
         self.log.warning(
-            'Buffer #%d for %s is dropped (totally dropped %d buffers)',
-            int(buffer.pts / buffer.duration), self, queue.dropped)
+            "Buffer #%d for %s is dropped (totally dropped %d buffers)",
+            int(buffer.pts / buffer.duration),
+            self,
+            queue.dropped,
+        )
 
     def _on_pipeline_init(self):
         """Sets additional properties for plugins in Pipeline"""
@@ -545,19 +599,24 @@ class GstVideoSource(GstPipeline):
             self.log.warning("%s No Gst.Memory in Gst.Buffer", self)
             return None
 
-        video_format = GstVideo.VideoFormat.from_string(
-            caps_.get_value('format'))
+        video_format = GstVideo.VideoFormat.from_string(caps_.get_value("format"))
 
-        w, h = caps_.get_value('width'), caps_.get_value('height')
+        w, h = caps_.get_value("width"), caps_.get_value("height")
         c = get_num_channels(video_format)
         dtype = get_np_dtype(video_format)
 
         # Copy buffer into np.ndarray
-        array = np.ndarray((h, w, c), dtype=dtype,
-                           buffer=buffer.extract_dup(0, buffer.get_size()))
+        array = np.ndarray(
+            (h, w, c), dtype=dtype, buffer=buffer.extract_dup(0, buffer.get_size())
+        )
 
-        return GstBuffer(data=array, pts=buffer.pts, dts=buffer.dts,
-                         duration=buffer.duration, offset=buffer.offset)
+        return GstBuffer(
+            data=array,
+            pts=buffer.pts,
+            dts=buffer.dts,
+            duration=buffer.duration,
+            offset=buffer.offset,
+        )
 
     def _on_buffer(self, sink: GstApp.AppSink, data: typ.Any) -> Gst.FlowReturn:
         """Callback on 'new-sample' signal"""
@@ -571,15 +630,18 @@ class GstVideoSource(GstPipeline):
 
             return Gst.FlowReturn.OK
 
-        self.log.error("Error : Not expected buffer type: %s != %s. %s", type(
-            sample), Gst.Sample, self)
+        self.log.error(
+            "Error : Not expected buffer type: %s != %s. %s",
+            type(sample),
+            Gst.Sample,
+            self,
+        )
         return Gst.FlowReturn.ERROR
 
     def pop(self, timeout: float = 0.1) -> typ.Optional[GstBuffer]:
         """ Pops GstBuffer """
         if not self._sink:
-            raise RuntimeError(
-                'Sink {} is not initialized'.format(Gst.AppSink))
+            raise RuntimeError("Sink {} is not initialized".format(Gst.AppSink))
 
         buffer = None
         while (self.is_active or not self._queue.empty()) and not buffer:

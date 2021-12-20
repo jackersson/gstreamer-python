@@ -9,8 +9,8 @@ NUM_BUFFERS = 50
 VIDEO_FORMAT = GstVideo.VideoFormat.RGB
 
 video_format_str = GstVideo.VideoFormat.to_string(VIDEO_FORMAT)
-caps_filter = f"capsfilter caps=video/x-raw,format={video_format_str},width={WIDTH},height={HEIGHT}"
-command = f"videotestsrc num-buffers={NUM_BUFFERS} ! {caps_filter} ! appsink emit-signals=True sync=false"
+caps_filter = "capsfilter caps=video/x-raw,format={video_format_str},width={WIDTH},height={HEIGHT}".format(**locals())
+command = "videotestsrc num-buffers={NUM_BUFFERS} ! {caps_filter} ! appsink emit-signals=True sync=false".format(**locals())
 
 last_buffer = None
 with GstContext(), GstVideoSource(command) as pipeline:
@@ -18,7 +18,7 @@ with GstContext(), GstVideoSource(command) as pipeline:
     while pipeline.is_active or pipeline.queue_size > 0:
         buffer = pipeline.pop()
         if buffer:
-            print(f"{Gst.TIME_ARGS(buffer.pts)}: shape {buffer.data.shape}")
+            print("{}: shape {}".format(Gst.TIME_ARGS(buffer.pts), buffer.data.shape))
             last_buffer = buffer
 
-print(f"Read {last_buffer.offset} buffers")
+print("Read {} buffers".format(last_buffer.offset))

@@ -17,4 +17,4 @@ with GstContext(), GstVideoSink(command, width=WIDTH, height=HEIGHT, video_frmt=
     while pipeline.is_done:
         pass
 
-    print(f"Displayed {pipeline.total_buffers_count} buffers")
+    print("Displayed {} buffers".format(pipeline.total_buffers_count))
