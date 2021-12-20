@@ -13,6 +13,7 @@ from .gst_hacks import map_gst_buffer  # noqa:F401,F402
 
 _CHANNELS = {
     GstVideo.VideoFormat.RGB: 3,
+    GstVideo.VideoFormat.I420: 3,
     GstVideo.VideoFormat.RGBA: 4,
     GstVideo.VideoFormat.RGBX: 4,
     GstVideo.VideoFormat.BGR: 3,
