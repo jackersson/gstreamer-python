@@ -11,10 +11,15 @@ LIBPYTHONPATH=$($PYTHON -c 'from distutils import sysconfig; print(sysconfig.get
 
 GST_PREFIX=${GST_PREFIX:-$(dirname $(dirname $(which python)))} 
 
+MESON_VERSION=$(meson --version)
+PYTHON_VERSION=$($PYTHON -c 'import sys; print(sys.version.split()[0])')
+
 echo "Python Executable: $PYTHON"
+echo "Python Version: $PYTHON_VERSION"
 echo "Python Library Path: $LIBPYTHONPATH"
 echo "Current Python Path $GST_PREFIX"
 echo "Gstreamer Version: $GST_VERSION"
+echo "Meson Version: $MESON_VERSION"
 
 TEMP_DIR="temp"
 mkdir $TEMP_DIR
@@ -26,6 +31,14 @@ cd gst-python
 
 export PYTHON=$PYTHON
 git checkout $GST_VERSION
+
+# py >= 3.8 && meson >= 0.53, apply patch
+TEST_PYVER=$($PYTHON -c "from packaging.version import parse; ans = 1 if parse('$PYTHON_VERSION') >= parse('3.8.0') else 0; print(ans)")
+TEST_MESONVER=$($PYTHON -c "from packaging.version import parse; ans = 1 if parse('$MESON_VERSION') >= parse('0.53.0') else 0; print(ans)")
+if [ 1 -eq $TEST_PYVER -a 1 -eq $TEST_MESONVER ] ; then 
+    sed -i 's|python.dependency(required : true)|python.dependency(embed:true, required : true)|g' meson.build
+    sed -i "s|meson_version : '.*',|meson_version : '>= 0.53.0',|g" meson.build
+fi
 
 #./autogen.sh --disable-gtk-doc --noconfigure
 #./configure --with-libpython-dir=$LIBPYTHONPATH --prefix $GST_PREFIX
