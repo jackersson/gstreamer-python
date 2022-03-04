@@ -3,12 +3,11 @@
 # Run current script to override Gstreamer related Scripts
 
 LIBPYTHONPATH=""
-PYTHON=${PYTHON:-/usr/bin/python3}
+PYTHON=${PYTHON:-$(which python3)}
 GST_VERSION=${GST_VERSION:-$(gst-launch-1.0 --version | grep version | tr -s ' ' '\n' | tail -1 | $PYTHON -c "import sys; print('.'.join(next(sys.stdin).strip().split('.')[:2]))")}
 
 # Ensure pygst to be installed in current environment
-LIBPYTHON=$($PYTHON -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LDLIBRARY"))')
-LIBPYTHONPATH=$(dirname $(ldconfig -p | grep -w $LIBPYTHON | head -1 | tr ' ' '\n' | grep /))
+LIBPYTHONPATH=$($PYTHON -c 'from distutils import sysconfig; print(sysconfig.get_config_var("LIBDIR"))')
 
 GST_PREFIX=${GST_PREFIX:-$(dirname $(dirname $(which python)))} 
 
