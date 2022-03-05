@@ -6,11 +6,21 @@
 - easy [gst-python](https://github.com/GStreamer/gst-python) installation
 
 ### Install
+
+__FOR ANY VIRTUAL ENVIRONMENT USERS, MAKE SURE YOU COMPILED PYTHON WITH
+`--enable-shared`(ESPECTIALLY FOR PYENV USERS) OR GST-PYTHON WON'T BE PROPERLY
+INSTALLED.__
+
 #### Install OS packages
 - [How to install Gstreamer on Ubuntu](http://lifestyletransfer.com/how-to-install-gstreamer-on-ubuntu/)
 - [How to install Gstreamer Python Bindings](http://lifestyletransfer.com/how-to-install-gstreamer-python-bindings/)
 
 #### in-place
+
+You need to install meson and ninja first. Usually just search meson and
+install it using your package manager and ninja will be automatically
+installed.
+
 ```bash
 python3 -m venv venv
 
@@ -23,6 +33,15 @@ pip install --upgrade --requirement requirements.txt
 ```
 
 #### pip-package
+
+You need to install meson and ninja first. Usually just search meson and
+install it using your package manager and ninja will be automatically
+installed.
+
+Note this package will not raise an exception for any error that happends. In
+the case of any error occurs, you might have a broken installation(e.g.
+gst-python not properly installed).
+
 ```bash
 
 pip install git+https://github.com/jackersson/gstreamer-python.git@{tag_name}#egg=gstreamer-python
