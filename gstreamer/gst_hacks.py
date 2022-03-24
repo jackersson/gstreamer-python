@@ -5,7 +5,7 @@ import os
 from ctypes import *
 from typing import Tuple
 from contextlib import contextmanager
-
+import platform
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import Gst  # noqa:F401,F402
@@ -24,8 +24,13 @@ class _GstMapInfo(Structure):
 
 
 _GST_MAP_INFO_POINTER = POINTER(_GstMapInfo)
-
-_libgst = CDLL(os.getenv("LIB_GSTREAMER_PATH", "libgstreamer-1.0.so.0"))
+# we need to check the OS
+# "libgstreamer-1.0.dylib"
+if platform.system() == 'Darwin':
+    _libgst = CDLL(os.getenv("LIB_GSTREAMER_PATH", "libgstreamer-1.0.dylib"))
+else:
+    _libgst = CDLL(os.getenv("LIB_GSTREAMER_PATH", "libgstreamer-1.0.so.0"))
+    
 _libgst.gst_buffer_map.argtypes = [c_void_p, _GST_MAP_INFO_POINTER, c_int]
 _libgst.gst_buffer_map.restype = c_int
 

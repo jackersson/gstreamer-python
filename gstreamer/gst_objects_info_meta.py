@@ -24,8 +24,9 @@ class GstObjectInfoArray(Structure):
 
 GstObjectInfoArrayPtr = POINTER(GstObjectInfoArray)
 
-cwd = os.path.dirname(os.path.abspath(__file__))
-libc = CDLL(os.path.join(cwd, "3rd_party/gstreamer/build/libgst_objects_info_meta.so"))
+#cwd = os.path.dirname(os.path.abspath(__file__))
+#libc = CDLL(os.path.join(cwd, "3rd_party/gstreamer/build/libgst_objects_info_meta.so"))
+libc = CDLL("libgst_objects_info_meta.so")
 
 libc.gst_buffer_add_objects_info_meta.argtypes = [c_void_p, GstObjectInfoArrayPtr]
 libc.gst_buffer_add_objects_info_meta.restype = c_void_p
