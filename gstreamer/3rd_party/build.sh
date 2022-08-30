@@ -5,6 +5,16 @@ echo "PWD: $PWD"
 # Gstreamer
 #cd gstreamer
 #./build.sh
-meson build
-#ninja -C build
+#--prefix=~/myinstalls/
+if [ -z ${PREFIX+x} ]; then 
+    echo "PREFIX is unset"; 
+    ninja -C build install
+    meson -Dbuildtype=debug build
+
+else 
+    echo "PREFIX is set to '$PREFIX'"; 
+    meson --prefix=$PREFIX -Dbuildtype=debug build
+
+fi
+# compile and install
 ninja -C build install
