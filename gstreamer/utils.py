@@ -41,7 +41,7 @@ def _get_num_channels(fmt: GstVideo.VideoFormat) -> int:
     if has_flag(frmt_info.flags, GstVideo.VideoFormatFlags.RGB):
         return 3
 
-    if has_flag(frmt_info.flags, GstVideo.VideoFormatFlags.I420):
+    if has_flag(frmt_info.flags, GstVideo.VideoFormatFlags.YUV):
         return 3
 
     if has_flag(frmt_info.flags, GstVideo.VideoFormatFlags.GRAY):
