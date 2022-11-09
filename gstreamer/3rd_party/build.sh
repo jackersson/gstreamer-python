@@ -8,7 +8,6 @@ echo "PWD: $PWD"
 #--prefix=~/myinstalls/
 if [ -z ${PREFIX+x} ]; then 
     echo "PREFIX is unset"; 
-    ninja -C build install
     meson -Dbuildtype=debug build
 
 else 

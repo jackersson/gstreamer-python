@@ -18,8 +18,8 @@ Usage Example:
 """
 
 import sys
-import os
 import time
+from datetime import datetime, timedelta
 import queue
 import logging
 import threading
@@ -119,22 +119,28 @@ class GstContext:
 class GstPipeline:
     """Base class to initialize any Gstreamer Pipeline from string"""
 
-    def __init__(self, command: str):
+    def __init__(self, command: str, eos_auto_shutdown: bool=True):
         """
         :param command: gst-launch string
         """
         self._command = command
+        self._eos_auto_shutdown = eos_auto_shutdown
+        self._eos = False
         self._pipeline = None  # Gst.Pipeline
         self._bus = None  # Gst.Bus
 
         self._log = logging.getLogger("pygst.{}".format(self.__class__.__name__))
-        self._log.info("%s \n gst-launch-1.0 %s", self, command)
+        self._log.debug("%s \n gst-launch-1.0 %s", self, command)
 
         self._end_stream_event = threading.Event()
 
     @property
     def log(self) -> logging.Logger:
         return self._log
+
+    @property
+    def eos(self) -> bool:
+        return self._eos
 
     def __str__(self) -> str:
         return self.__class__.__name__
@@ -190,7 +196,7 @@ class GstPipeline:
         self._on_pipeline_init()
         self._pipeline.set_state(Gst.State.READY)
 
-        self.log.info("Starting %s", self)
+        self.log.debug("Starting %s", self)
 
         self._end_stream_event.clear()
 
@@ -221,31 +227,34 @@ class GstPipeline:
         :param eos: if True -> send EOS event
             - EOS event necessary for FILESINK finishes properly
             - Use when pipeline crushes
+        :param wait_eos: if True -> wait the EOS from the bus            
         """
 
         if self._end_stream_event.is_set():
-            return
-
-        self._end_stream_event.set()
+            self.log.warning("self._end_stream_event.is_set()")
+        else:
+            self._end_stream_event.set()
 
         if not self.pipeline:
+            self.log.warning("self.pipeline is None")
             return
 
         self.log.debug("%s Stopping pipeline ...", self)
-
+        
+        # EOS should be sent to a src element
         # https://lazka.github.io/pgi-docs/Gst-1.0/classes/Element.html#Gst.Element.get_state
-        if self._pipeline.get_state(timeout=1)[1] == Gst.State.PLAYING:
-            self.log.debug("%s Sending EOS event ...", self)
-            try:
-                thread = threading.Thread(
-                    target=self._pipeline.send_event, args=(Gst.Event.new_eos(),)
-                )
-                thread.start()
-                thread.join(timeout=timeout)
-            except Exception:
-                pass
+        # if self._pipeline.get_state(timeout=1)[1] == Gst.State.PLAYING:
+        #     self.log.debug("%s Sending EOS event ...", self)
+        #     try:
+        #         thread = threading.Thread(
+        #             target=self._pipeline.send_event, args=(Gst.Event.new_eos(),)
+        #         )
+        #         thread.start()
+        #         thread.join(timeout=timeout)
+        #     except Exception:
+        #         pass
 
-        self.log.debug("%s Reseting pipeline state ....", self)
+        # self.log.debug("%s Reseting pipeline state ....", self)
         try:
             self._pipeline.set_state(Gst.State.NULL)
             self._pipeline = None
@@ -254,18 +263,42 @@ class GstPipeline:
 
         self.log.debug("%s Gst.Pipeline successfully destroyed", self)
 
-    def shutdown(self, timeout: int = 1, eos: bool = False) -> None:
+    def shutdown(self, timeout: int = 1, eos: bool = False, wait_eos:bool = False) -> None:
         """Shutdown pipeline
         :param timeout: time to wait when pipeline fully stops
         :param eos: if True -> send EOS event
             - EOS event necessary for FILESINK finishes properly
             - Use when pipeline crushes
+        :param wait_eos: if True -> wait the EOS from the bus
         """
-        self.log.info("%s Shutdown requested ...", self)
 
-        self._shutdown_pipeline(timeout=timeout, eos=eos)
+        def _delayed_shutdown_till_eos():
+            self.log.debug("========== _delayed_shutdown_till_eos ============ ")
+            wait_until = datetime.now() + timedelta(seconds=timeout)
+            while True:
+                if self.eos:
+                    self.log.debug("EOS has arrived already")
+                    break
+                if wait_until < datetime.now():
+                    self.log.debug("eos wait timeout")
+                    break
+                time.sleep(0.1)
+            # now we do real pipeline shutdown 
+            self._shutdown_pipeline(timeout=timeout, eos=eos)
 
-        self.log.info("%s successfully destroyed", self)
+        self.log.debug("%s Shutdown requested ...", self)
+        if wait_eos:
+            try:
+                thread = threading.Thread(target=_delayed_shutdown_till_eos)
+                thread.start()
+                thread.join(timeout=timeout)
+            except Exception:
+                self.log.debug("delayed shutdown timeouted")
+
+        else:
+            self._shutdown_pipeline(timeout=timeout, eos=eos)
+
+        self.log.debug("%s successfully destroyed", self)
 
     @property
     def is_active(self) -> bool:
@@ -282,7 +315,9 @@ class GstPipeline:
 
     def on_eos(self, bus: Gst.Bus, message: Gst.Message):
         self.log.debug("Gstreamer.%s: Received stream EOS event", self)
-        self._shutdown_pipeline()
+        self._eos = True
+        if self._eos_auto_shutdown:
+            self._shutdown_pipeline()
 
     def on_warning(self, bus: Gst.Bus, message: Gst.Message):
         warn, debug = message.parse_warning()
