@@ -277,13 +277,13 @@ class GstPipeline:
             wait_until = datetime.now() + timedelta(seconds=timeout)
             while True:
                 if self.eos:
-                    self.log.debug("EOS has arrived already")
+                    self.log.debug("== EOS has arrived already")
                     break
                 if wait_until < datetime.now():
-                    self.log.debug("eos wait timeout")
+                    self.log.debug("== EOS wait timeout")
                     break
                 time.sleep(0.1)
-            # now we do real pipeline shutdown 
+            self.log.debug("== now we do real pipeline shutdown by EOS or Timeout ==") 
             self._shutdown_pipeline(timeout=timeout, eos=eos)
 
         self.log.debug("%s Shutdown requested ...", self)
@@ -296,6 +296,7 @@ class GstPipeline:
                 self.log.debug("delayed shutdown timeouted")
 
         else:
+            self.log.debug("No need to wait EOS, start to shutdown the pipeline") 
             self._shutdown_pipeline(timeout=timeout, eos=eos)
 
         self.log.debug("%s successfully destroyed", self)
@@ -310,13 +311,14 @@ class GstPipeline:
 
     def on_error(self, bus: Gst.Bus, message: Gst.Message):
         err, debug = message.parse_error()
-        self.log.error("Gstreamer.%s: Error %s: %s. ", self, err, debug)
+        self.log.error("[on_error] Gstreamer.%s: Error %s: %s. ", self, err, debug)
         self._shutdown_pipeline()
 
     def on_eos(self, bus: Gst.Bus, message: Gst.Message):
-        self.log.debug("Gstreamer.%s: Received stream EOS event", self)
+        self.log.debug("[on_eos] Gstreamer.%s: Received stream EOS event", self)
         self._eos = True
         if self._eos_auto_shutdown:
+            self.log.debug("=== received EOS, try to shutdown the pipeline === ")
             self._shutdown_pipeline()
 
     def on_warning(self, bus: Gst.Bus, message: Gst.Message):
