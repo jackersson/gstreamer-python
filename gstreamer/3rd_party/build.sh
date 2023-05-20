@@ -1,7 +1,7 @@
 ROOT=$PWD
 
 echo "PWD: $PWD"
-
+rm -rf ./build
 # Gstreamer
 #cd gstreamer
 #./build.sh

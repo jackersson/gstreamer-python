@@ -27,7 +27,6 @@ import typing as typ
 from enum import Enum
 from functools import partial
 from fractions import Fraction
-
 import attr
 import numpy as np
 
@@ -126,8 +125,8 @@ class GstPipeline:
         self._command = command
         self._eos_auto_shutdown = eos_auto_shutdown
         self._eos = False
-        self._pipeline = None  # Gst.Pipeline
-        self._bus = None  # Gst.Bus
+        self._pipeline: typ.Optional[Gst.Pipeline] = None
+        self._bus: typ.Optional[Gst.Bus] = None
 
         self._log = logging.getLogger("pygst.{}".format(self.__class__.__name__))
         self._log.debug("%s \n gst-launch-1.0 %s", self, command)
@@ -324,7 +323,6 @@ class GstPipeline:
     def on_warning(self, bus: Gst.Bus, message: Gst.Message):
         warn, debug = message.parse_warning()
         self.log.warning("Gstreamer.%s: %s. %s", self, warn, debug)
-
 
 def gst_video_format_plugin(
     *,
