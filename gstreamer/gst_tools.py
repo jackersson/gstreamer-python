@@ -118,13 +118,14 @@ class GstContext:
 class GstPipeline:
     """Base class to initialize any Gstreamer Pipeline from string"""
 
-    def __init__(self, command: str, eos_auto_shutdown: bool=True):
+    def __init__(self, command: str, eos_auto_shutdown: bool=True, shutdown_on_error:bool=True):
         """
         :param command: gst-launch string
         """
         self._command = command
         self._eos_auto_shutdown = eos_auto_shutdown
         self._eos = False
+        self._shutdown_on_error = shutdown_on_error
         self._pipeline: typ.Optional[Gst.Pipeline] = None
         self._bus: typ.Optional[Gst.Bus] = None
 
@@ -311,7 +312,11 @@ class GstPipeline:
     def on_error(self, bus: Gst.Bus, message: Gst.Message):
         err, debug = message.parse_error()
         self.log.error("[on_error] Gstreamer.%s: Error %s: %s. ", self, err, debug)
-        self._shutdown_pipeline()
+        if self._shutdown_on_error:
+            self.log.warn("[on_error] shutdown pipeline on error")
+            self._shutdown_pipeline()
+        else:
+            self.log.warn("[on_error] ignore error")
 
     def on_eos(self, bus: Gst.Bus, message: Gst.Message):
         self.log.debug("[on_eos] Gstreamer.%s: Received stream EOS event", self)
