@@ -311,12 +311,13 @@ class GstPipeline:
 
     def on_error(self, bus: Gst.Bus, message: Gst.Message):
         err, debug = message.parse_error()
-        self.log.error("[on_error] Gstreamer.%s: Error %s: %s. ", self, err, debug)
+        self.log.error("[on_error] Gstreamer.%s: Error %s: %s\nCommand on_error: %s", self, err, debug, self._command)
+        
         if self._shutdown_on_error:
             self.log.warn("[on_error] shutdown pipeline on error")
             self._shutdown_pipeline()
         else:
-            self.log.warn("[on_error] ignore error")
+            self.log.warn("[on_error] error ignored")
 
     def on_eos(self, bus: Gst.Bus, message: Gst.Message):
         self.log.debug("[on_eos] Gstreamer.%s: Received stream EOS event", self)
