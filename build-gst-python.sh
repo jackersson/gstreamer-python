@@ -28,10 +28,13 @@ cd gst-python
 export PYTHON=$PYTHON
 git checkout $GST_VERSION
 
-./autogen.sh --disable-gtk-doc --noconfigure
-./configure --with-libpython-dir=$LIBPYTHONPATH --prefix $GST_PREFIX
-make
-make install
+#./autogen.sh --disable-gtk-doc --noconfigure
+#./configure --with-libpython-dir=$LIBPYTHONPATH --prefix $GST_PREFIX
+#make
+#make install
+meson --prefix=/usr -Dbuildtype=release build
+#ninja -C build
+ninja -C build install
 
 cd ../..
 
