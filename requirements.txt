@@ -1,8 +1,4 @@
 numpy>=1.14.3
 pycairo>=1.18.2
 PyGObject
-pytest>=5.3.2
-pytest-benchmark>=3.2.2
 attrs>=19.3.0
-autopep8>=1.4.4
-flake8>=3.7.9

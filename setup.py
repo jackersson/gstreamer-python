@@ -76,7 +76,4 @@ setup(
         'Natural Language :: English',
         'Programming Language :: Python :: 3.6',
     ],
-    cmdclass={
-        'build_py': build_py,
-    }
 )
