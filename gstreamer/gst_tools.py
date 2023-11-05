@@ -538,9 +538,14 @@ class GstVideoSource(GstPipeline):
 
         self._sink = None  # GstApp.AppSink
         self._counter = 0  # counts number of received buffers
+        self._caps = None  # Gst.Caps
 
         queue_cls = partial(LeakyQueue, on_drop=self._on_drop) if leaky else queue.Queue
         self._queue = queue_cls(maxsize=max_buffers_size)  # Queue of GstBuffer
+
+    @property
+    def caps(self):
+        return self._caps
 
     @property
     def total_buffers_count(self) -> int:
@@ -585,6 +590,9 @@ class GstVideoSource(GstPipeline):
         """
         buffer = sample.get_buffer()
         caps = sample.get_caps()
+
+        if self._caps is None:
+            self._caps = caps
 
         cnt = buffer.n_memory()
         if cnt <= 0:
